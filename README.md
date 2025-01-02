@@ -37,7 +37,7 @@ graph TB
     style KS fill:#f9f,stroke:#333
     style M fill:#bbf,stroke:#333
     style R fill:#bfb,stroke:#333
-    ```
+```
 
 ## 🚀 Quick Start
 
