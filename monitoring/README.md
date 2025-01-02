@@ -1,203 +1,172 @@
 # 📊 Kopia Monitoring Stack
 
-## Overview
-Comprehensive monitoring solution for Kopia Backup System including:
-- 🔍 Zabbix monitoring for alerts and reporting
-- 📊 Prometheus metrics for real-time data
-- 📈 Grafana dashboards for visualization
-- 📱 Node exporter for system metrics
+## 📋 Overview
+Integrated monitoring solution for Kopia Backup System:
+- 🔍 Prometheus metrics collection
+- 📈 Grafana visualization
+- 🚨 Zabbix enterprise monitoring
+- 📱 Mobile-friendly dashboards
 
-## Architecture
+## 🏗️ Architecture
+
 ```mermaid
 graph TB
     subgraph "Monitoring Stack"
-        subgraph "Metrics Collection"
-            P[Prometheus]
-            G[Grafana]
-            Z[Zabbix]
-        end
-        
-        subgraph "Storage"
-            PD[(Prometheus DB)]
-            GD[(Grafana DB)]
-            ZD[(Zabbix DB)]
-        end
-        
-        subgraph "Exporters"
+        subgraph "Real-time Metrics"
             KE[Kopia Exporter]
             NE[Node Exporter]
+            P[Prometheus]
+            PD[(Prometheus DB)]
+            G[Grafana]
         end
-        
-        subgraph "Alerting"
-            GA[Grafana Alerts]
-            ZA[Zabbix Alerts]
+
+        subgraph "Enterprise Monitoring"
+            Z[Zabbix]
+            ZA[Alerts]
+            ZS[Scripts]
+        end
+
+        subgraph "Health Checks"
+            HC[Health Controller]
+            AM[Alert Manager]
         end
     end
 
     subgraph "Kopia Stack"
         KS[Kopia Server]
-        KC[Kopia Client]
         R[(Repository)]
     end
 
-    %% Metrics Flow
+    KS -->|Status| KE
     KE -->|Metrics| P
     NE -->|System Metrics| P
-    KS -->|Status| KE
     P -->|Store| PD
+    P -->|Query| G
     
-    %% Visualization
-    P -->|Data Source| G
-    G -->|Store| GD
-    G -->|Alert| GA
-    
-    %% Zabbix Flow
-    KS -->|Status| Z
-    Z -->|Store| ZD
+    KS -->|Check| ZS
+    ZS -->|Report| Z
     Z -->|Alert| ZA
     
-    %% Kopia Flow
-    KC -->|Backup| KS
-    KS -->|Store| R
+    HC -->|Monitor| KE
+    HC -->|Monitor| P
+    HC -->|Monitor| G
+    HC -->|Alert| AM
 
-    style P fill:#f9f,stroke:#333
-    style G fill:#bbf,stroke:#333
-    style Z fill:#bfb,stroke:#333
-    style KE fill:#fbb,stroke:#333
-    style NE fill:#fbb,stroke:#333
-    style KS fill:#ddf,stroke:#333
+    style KS fill:#f9f,stroke:#333
+    style P fill:#bbf,stroke:#333
+    style G fill:#bfb,stroke:#333
+    style Z fill:#fbb,stroke:#333
 ```
 
-## Quick Start
+## 🚀 Quick Start
 
-1. Configure monitoring in .env:
+### 1. Prerequisites
+- Docker & Docker Compose installed
+- Running Kopia server
+- 2GB free RAM for monitoring
+- 10GB disk space for metrics
+
+### 2. Configuration
 ```bash
-# Choose monitoring type
-MONITORING_TYPE=all  # all, zabbix, prometheus, none
+# Basic monitoring setup
+MONITORING_TYPE=prometheus
+PROMETHEUS_ENABLE=true
+GRAFANA_ADMIN_PASSWORD=secure-password
 
-# Configure networks
-KOPIA_NETWORK_NAME=kopia_network
-MONITORING_NETWORK_NAME=monitoring_network
-
-# Set ports
-PROMETHEUS_UI_PORT=9090
-GRAFANA_PORT=3000
-KOPIA_EXPORTER_PORT=9091
+# Enterprise monitoring
+MONITORING_TYPE=all
+ZABBIX_ENABLE=true
 ```
 
-2. Deploy monitoring:
+### 3. Deployment
 ```bash
+# Deploy stack
 ./scripts/setup_monitoring.sh
+
+# Verify components
+curl -s http://localhost:9090/-/healthy
+curl -s http://localhost:3000/api/health
+curl -s http://localhost:9091/metrics
 ```
 
-3. Access dashboards:
-- Grafana: http://localhost:3000 (admin/admin)
-- Prometheus: http://localhost:9090
-- Zabbix: Configure in your Zabbix server
+## 📊 Component Details
 
-## Components
+### 1. Prometheus Stack
+- **Kopia Exporter**: Custom metrics from Kopia
+- **Node Exporter**: System metrics
+- **Prometheus**: Metrics storage
+- **Grafana**: Visualization
 
-### 🔍 Prometheus
-- Real-time metrics collection
-- Data storage and querying
-- Custom exporters support
-- Default port: 9090
+### 2. Zabbix Integration
+- **Scripts**: Backup validation
+- **Templates**: Pre-configured monitoring
+- **Alerts**: Automated notifications
 
-### 📊 Grafana
-- Interactive dashboards
-- Multiple data sources
-- Alert management
-- Default port: 3000
+### 3. Health Checks
+- Component status monitoring
+- Automatic recovery
+- Alert notifications
 
-### 📈 Exporters
-- Kopia metrics exporter
-- Node system metrics
-- Custom metrics collection
-- Default ports: 9091, 9100
+## 📈 Available Metrics
 
-### 🚨 Zabbix
-- Enterprise monitoring
-- Advanced alerting
-- Historical data
-- Template-based configuration
+### Backup Metrics
+| Metric | Type | Description |
+|--------|------|-------------|
+| kopia_backup_size_bytes | Gauge | Backup size |
+| kopia_backup_duration_seconds | Gauge | Backup duration |
+| kopia_repository_size_bytes | Gauge | Repository size |
+| kopia_backup_validation | Gauge | Validation status |
 
-## Metrics Overview
+### System Metrics
+| Metric | Type | Description |
+|--------|------|-------------|
+| node_filesystem_free_bytes | Gauge | Free storage |
+| node_memory_MemAvailable_bytes | Gauge | Available memory |
+| node_cpu_seconds_total | Counter | CPU usage |
 
-### Core Metrics
-- Backup status and size
-- Repository health
-- System resources
-- Error rates
+## 🛠 Troubleshooting
 
-### Performance Metrics
-- Backup duration
-- Compression ratio
-- Network throughput
-- Resource usage
+### Common Issues
 
-## Security
+1. Metrics Not Available
+```bash
+# Check exporter
+docker logs kopia-exporter
+curl http://localhost:9091/metrics
+
+# Check Prometheus
+curl http://localhost:9090/api/v1/targets
+```
+
+2. Grafana Issues
+```bash
+# Reset admin password
+docker exec -it kopia-grafana grafana-cli admin reset-admin-password
+
+# Check datasource
+curl http://localhost:3000/api/datasources/proxy/1/api/v1/query?query=up
+```
+
+3. Zabbix Integration
+```bash
+# Test scripts
+/usr/lib/zabbix/externalscripts/check_kopia_backup.sh
+/usr/lib/zabbix/externalscripts/check_repository.sh
+```
+
+## 🔒 Security
 
 ### Network Security
 - Isolated monitoring network
-- Limited port exposure
-- TLS support (optional)
-- Access control
+- Internal service discovery
+- Optional TLS encryption
 
-### Authentication
-- Grafana password protection
-- Prometheus basic auth (optional)
-- Zabbix authentication
+### Access Control
+- Grafana authentication
+- Prometheus basic auth
 - Network isolation
 
-## Maintenance
-
-### Logs
-```bash
-# View component logs
-docker logs kopia-prometheus
-docker logs kopia-grafana
-docker logs kopia-exporter
-```
-
-### Backup
-```bash
-# Backup monitoring data
-./scripts/backup_monitoring_data.sh
-```
-
-### Updates
-```bash
-# Update monitoring stack
-docker-compose -f docker/docker-compose.monitoring.yml pull
-docker-compose -f docker/docker-compose.monitoring.yml up -d
-```
-
-## Troubleshooting
-
-### Common Issues
-1. Prometheus can't scrape metrics:
-```bash
-# Check network connectivity
-docker network inspect monitoring_network
-# Check exporter status
-curl http://localhost:9091/metrics
-```
-
-2. Grafana can't connect:
-```bash
-# Verify Prometheus connection
-curl http://localhost:9090/api/v1/query?query=up
-```
-
-3. Missing data:
-```bash
-# Check exporter logs
-docker logs kopia-exporter
-# Verify metrics
-curl http://localhost:9091/metrics | grep kopia
-```
-
-## Additional Resources
-- [Prometheus Documentation](https://prometheus.io/docs/)
-- [Grafana Documentation](https://grafana.com/docs/)
-- [Zabbix Documentation](https://www.zabbix.com/documentation/) 
+## 📚 Additional Resources
+- [Prometheus Best Practices](https://prometheus.io/docs/practices/naming/)
+- [Grafana Dashboards](https://grafana.com/grafana/dashboards/)
+- [Zabbix Templates](https://www.zabbix.com/integrations/)
