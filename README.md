@@ -1,4 +1,4 @@
-# 🚀 Kopia Backup System
+# 🚀 Kopia Backup System Run Scripts
 
 Enterprise-grade backup solution using Kopia with Docker support.
 
