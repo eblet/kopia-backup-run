@@ -10,30 +10,22 @@ Integrated monitoring solution for Kopia Backup System:
 ## 🏗️ Architecture
 
 ```mermaid
-graph TB
+graph LR
     subgraph "Monitoring Stack"
         subgraph "Real-time Metrics"
-            KE[Kopia Exporter]
-            NE[Node Exporter]
-            P[Prometheus]
-            PD[(Prometheus DB)]
-            G[Grafana]
+            direction LR
+            KE[Kopia Exporter] -->|Export| P[Prometheus]
+            NE[Node Exporter] -->|System Metrics| P
+            P -->|Store| PD[(Prometheus DB)]
+            P -->|Query| G[Grafana]
         end
 
         subgraph "Enterprise Monitoring"
-            Z[Zabbix]
-            ZA[Alerts]
-            ZS[Scripts]
+            direction LR
+            ZS[Scripts] -->|Check| Z[Zabbix]
+            Z -->|Generate| ZA[Alerts]
         end
     end
-
-    KE -->|Export| P
-    NE -->|System Metrics| P
-    P -->|Store| PD
-    P -->|Query| G
-    
-    ZS -->|Check| Z
-    Z -->|Generate| ZA
 
     style P fill:#f9f,stroke:#333
     style G fill:#bbf,stroke:#333    
