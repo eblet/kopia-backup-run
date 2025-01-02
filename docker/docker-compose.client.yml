@@ -3,12 +3,14 @@ version: '3.8'
 services:
   kopia-backup:
     image: kopia/kopia:latest
+    container_name: kopia-client
     volumes:
-      - ${DOCKER_VOLUMES}:/backup:ro
-      - ~/.config/kopia:/app/config
-      - ~/.cache/kopia:/app/cache
+      - ${KOPIA_CONFIG_DIR}:/app/config
+      - ${KOPIA_CACHE_DIR}:/app/cache
+      - /var/log/kopia:/var/log/kopia
     environment:
-      - KOPIA_PASSWORD=example_repository_password
+      - KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD}
+      - TZ=UTC
     command: >
       snapshot create
       /backup

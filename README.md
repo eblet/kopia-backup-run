@@ -53,6 +53,10 @@ Enterprise-ready configuration for Kopia backup system with Docker support.
    cp .env.example .env
    nano .env
 
+   # Create required directories
+   sudo mkdir -p /var/lib/kopia /var/log/kopia
+   sudo chmod 750 /var/lib/kopia /var/log/kopia
+
    # Start Kopia server
    docker-compose -f docker/docker-compose.server.yml up -d
 
@@ -65,6 +69,10 @@ Enterprise-ready configuration for Kopia backup system with Docker support.
    # Configure environment
    cp .env.example .env
    nano .env
+
+   # Create required directories
+   mkdir -p ~/.config/kopia ~/.cache/kopia
+   sudo mkdir -p /var/log/kopia
 
    # Start backup
    ./scripts/kopia_client_docker_run.sh
@@ -97,11 +105,13 @@ Enterprise-ready configuration for Kopia backup system with Docker support.
    NAS_SHARE=                   # NAS share path
    ```
 
-3. Storage Configuration:
+3. Path Configuration:
    ```bash
-   KOPIA_REPO_PATH=/var/lib/kopia/repository
-   NAS_MOUNT_PATH=/mnt/NAS
-   NAS_MOUNT_OPTIONS="rw,sync,hard,intr,rsize=32768,wsize=32768"
+   KOPIA_BASE_DIR=/var/lib/kopia     # Base directory for all Kopia data
+   KOPIA_REPO_PATH=/var/lib/kopia/repository  # Full path to repository
+   KOPIA_CONFIG_DIR=~/.config/kopia  # Client config directory
+   KOPIA_CACHE_DIR=~/.cache/kopia   # Client cache directory
+   NAS_MOUNT_PATH=/mnt/NAS          # NAS mount point
    ```
 
 4. Resource Limits:
@@ -125,6 +135,10 @@ Enterprise-ready configuration for Kopia backup system with Docker support.
            "exclude": ["*.tmp", "*.log"]
        }
    }'
+
+   # Backup settings
+   BACKUP_COMPRESSION=zstd-fastest  # Compression algorithm
+   BACKUP_VERIFY=true              # Verify after backup
    ```
 
 📊 Monitoring & Maintenance
@@ -137,19 +151,12 @@ Enterprise-ready configuration for Kopia backup system with Docker support.
    docker logs kopia-server
    docker logs kopia-client
 
-   # Script installation
-   systemctl status kopia-server
-   journalctl -u kopia-server
-   ```
-
-2. View Backup Logs:
-   ```bash
    # Check logs
-   cat /var/log/kopia/server.log
-   cat /var/log/kopia/client.log
+   tail -f /var/log/kopia/server.log
+   tail -f /var/log/kopia/client.log
    ```
 
-3. Verify Backups:
+2. Verify Backups:
    ```bash
    # List snapshots
    docker exec kopia-server kopia snapshot list
@@ -199,20 +206,15 @@ Enterprise-ready configuration for Kopia backup system with Docker support.
      NAS_MOUNT_OPTIONS="rw,sync,hard,intr,rsize=32768,wsize=32768"
      ```
 
-3. Log Rotation:
-   - Logs are automatically rotated
-   - Default retention: 7 days
+3. Log Management:
    - Location: /var/log/kopia/
+   - Automatic rotation: 7 days retention
+   - Maximum size per file: 100MB
 
 4. Resource Management:
-   - Set appropriate limits based on server capacity
-   - Monitor resource usage with `docker stats`
-
-5. Backup Tags:
-   Common tag categories:
-   - type: database, config, data, secrets
-   - app: application name
-   - env: prod, dev, staging
+   - Monitor usage: `docker stats kopia-server kopia-client`
+   - Adjust limits in .env as needed
+   - Check system resources: `htop` or `top`
 
 ⚠️ Troubleshooting
 ----------------
@@ -230,13 +232,21 @@ Enterprise-ready configuration for Kopia backup system with Docker support.
 2. Permission Problems:
    ```bash
    # Check directory permissions
+   ls -la ${KOPIA_BASE_DIR}
    ls -la ${KOPIA_REPO_PATH}
-   ls -la ${NAS_MOUNT_PATH}
+   ls -la /var/log/kopia
    ```
 
 3. Resource Issues:
    ```bash
    # Check resource usage
-   docker stats kopia-server
-   docker stats kopia-client
+   docker stats
+   df -h
+   free -m
    ```
+
+4. Common Errors:
+   - "Repository not initialized": Check KOPIA_REPO_PASSWORD
+   - "Cannot connect to server": Verify network and KOPIA_SERVER_IP
+   - "NFS mount failed": Check NAS connectivity and permissions
+   - "Permission denied": Verify directory permissions

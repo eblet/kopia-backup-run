@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Load environment variables
 source .env
@@ -24,9 +25,20 @@ apt update
 apt install -y kopia nfs-common
 
 # Create required directories
-log "Creating directories..."
-mkdir -p $KOPIA_REPO_PATH
-mkdir -p $NAS_MOUNT_PATH
+setup_dirs() {
+    log "Creating required directories..."
+    local dirs=(
+        "${KOPIA_BASE_DIR}"
+        "${KOPIA_REPO_PATH}"
+        "${NAS_MOUNT_PATH}"
+        "/var/log/kopia"
+    )
+
+    for dir in "${dirs[@]}"; do
+        mkdir -p "${dir}"
+        chmod 750 "${dir}"
+    done
+}
 
 # Mount NAS
 log "Mounting NAS..."

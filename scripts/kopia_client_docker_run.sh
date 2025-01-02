@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Volumes configuration with descriptions
 declare -A volumes
@@ -7,6 +8,13 @@ eval "volumes=${DOCKER_VOLUMES}"
 # Logging function
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+}
+
+setup_dirs() {
+    log "Creating required directories..."
+    mkdir -p "${KOPIA_CONFIG_DIR}"
+    mkdir -p "${KOPIA_CACHE_DIR}"
+    mkdir -p "/var/log/kopia"
 }
 
 # Check server connection
@@ -98,3 +106,15 @@ for path in "${!volumes[@]}"; do
 done
 
 log "All operations completed"
+
+main() {
+    log "Starting Kopia client backup..."
+    
+    setup_dirs
+    setup_logging
+    validate_volumes_config
+    check_server
+    run_backup
+
+    log "Backup process completed"
+}
