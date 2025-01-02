@@ -36,7 +36,7 @@ graph TB
     Z -->|Generate| ZA
 
     style P fill:#f9f,stroke:#333
-    style G fill:#bbf,stroke:#333
+    style G fill:#bbf,stroke:#333    
     style Z fill:#bfb,stroke:#333
 ```
 
