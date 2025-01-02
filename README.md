@@ -28,13 +28,18 @@ graph TB
     subgraph "Server Machine"
         C -->|Backup| S[Kopia Server]
         S -->|Store| R[(Repository)]
-        R -->|Sync| N[(NAS Storage)]
-        
-        subgraph "Automation"
-            T1[Backup Timer] -->|Trigger| C
-            T2[Sync Timer] -->|Trigger| R
-            T3[Cleanup Timer] -->|Maintain| R
-        end
+    end
+
+    subgraph "Synology NAS"
+        N[(NAS Storage)]
+    end
+
+    R -->|Sync| N
+
+    subgraph "Automation"
+        T1[Backup Timer] -->|Trigger| C
+        T2[Sync Timer] -->|Trigger| R
+        T3[Cleanup Timer] -->|Maintain| R
     end
 
     style S fill:#f9f,stroke:#333
