@@ -1,15 +1,13 @@
 # 🚀 Kopia Backup System Run Scripts
 
-Enterprise-grade backup solution using Kopia with Docker support.
-
 ## 📋 Overview
 
 Kopia Backup System provides a robust, containerized backup solution with:
-- Centralized backup server
-- Distributed backup clients
-- NAS synchronization
-- Automated maintenance
-- Monitoring capabilities
+- 🔄 Centralized backup server
+- 📱 Distributed backup clients
+- 💾 NAS synchronization
+- ⚡ Automated maintenance
+- 📊 Monitoring capabilities
 
 ## 🏗️ Architecture
 
@@ -35,38 +33,38 @@ graph TB
 
 ## 🔧 System Components
 
-### Core Components
-- **Kopia Server**: Central backup management
-- **Kopia Client**: Backup agent
-- **Repository**: Primary backup storage
-- **NAS Sync**: Secondary storage sync
+### 🛠️ Core Components
+- 🖥️ **Kopia Server**: Central backup management
+- 📱 **Kopia Client**: Backup agent
+- 💾 **Repository**: Primary backup storage
+- 🔄 **NAS Sync**: Secondary storage sync
 
-### Automation
-- **Systemd Services**: Service management
-- **Timers**: Scheduled operations
-- **Cleanup**: Automated maintenance
+### ⚡ Automation
+- ⚙️ **Systemd Services**: Service management
+- ⏰ **Timers**: Scheduled operations
+- 🧹 **Cleanup**: Automated maintenance
 
-## 📋 Requirements
+## 💻 Requirements
 
-### Server
-- Docker Engine 20.10+
-- Docker Compose 2.0+
-- 2GB RAM minimum (4GB recommended)
-- 2 CPU cores minimum
-- 10GB free disk space
-- NFS client utilities
-- Network access to NAS
+### 🖥️ Server
+- 🐳 Docker Engine 20.10+
+- 🔄 Docker Compose 2.0+
+- 💾 2GB RAM minimum (4GB recommended)
+- 🔲 2 CPU cores minimum
+- 💽 10GB free disk space
+- 📡 NFS client utilities
+- 🌐 Network access to NAS
 
-### Client
-- Docker Engine 20.10+
-- Docker Compose 2.0+
-- 1GB RAM minimum
-- Network access to server
-- jq utility
+### 📱 Client
+- 🐳 Docker Engine 20.10+
+- 🔄 Docker Compose 2.0+
+- 💾 1GB RAM minimum
+- 🌐 Network access to server
+- 🔧 jq utility
 
 ## 🚀 Quick Start
 
-### 1. Installation
+### 📥 1. Installation
 
 ```bash
 # Clone repository
@@ -81,7 +79,7 @@ sudo apt update
 sudo apt install -y docker.io docker-compose nfs-common
 ```
 
-### 2. Configuration
+### ⚙️ 2. Configuration
 
 Edit .env file with your settings:
 ```bash
@@ -100,7 +98,7 @@ NAS_SHARE=<share-path>
 NAS_MOUNT_PATH=/mnt/nas
 ```
 
-### 3. Server Deployment
+### 🌐 3. Server Deployment
 
 ```bash
 # Run server setup
@@ -111,7 +109,7 @@ systemctl status kopia-server
 docker logs kopia-server
 ```
 
-### 4. Client Setup
+### 💾 4. Client Setup
 
 1. Configure backup volumes:
 ```json
@@ -130,9 +128,9 @@ DOCKER_VOLUMES='{
 ./scripts/kopia_client_docker_run.sh
 ```
 
-## ⚙️ Configuration Guide
+## 🛠️ Configuration Guide
 
-### Directory Structure
+### 📁 Directory Structure
 ```
 /var/lib/kopia/          # Base directory
 ├── repository/          # Repository storage
@@ -142,9 +140,9 @@ DOCKER_VOLUMES='{
 /mnt/nas/               # NAS mount point
 ```
 
-### Security Configuration
+### 🔐 Security Configuration
 
-#### TLS Setup
+#### 🔒 TLS Setup
 1. Generate certificate:
 ```bash
 sudo mkdir -p /etc/kopia
@@ -162,7 +160,7 @@ KOPIA_TLS_CERT_PATH=/etc/kopia/cert.pem
 KOPIA_SERVER_ALLOWED_IPS=10.0.0.0/24
 ```
 
-### Performance Optimization
+### ⚡ Performance Optimization
 
 1. Cache Settings:
 ```bash
@@ -178,7 +176,7 @@ KOPIA_UPLOAD_LIMIT=50M
 KOPIA_DOWNLOAD_LIMIT=50M
 ```
 
-### Resource Planning
+### 📊 Resource Planning
 
 1. Server Resources:
 ```bash
@@ -196,7 +194,7 @@ KOPIA_CLIENT_MEM_LIMIT=2G
 
 ## 📊 Monitoring & Maintenance
 
-### Service Status
+### 🔍 Service Status
 
 ```bash
 # Server checks
@@ -209,7 +207,7 @@ docker logs kopia-client
 tail -f /var/log/kopia/client.log
 ```
 
-### Backup Management
+### 💾 Backup Management
 
 ```bash
 # List snapshots
@@ -222,7 +220,7 @@ docker exec kopia-server kopia repository status
 systemctl start kopia-nas-sync.service
 ```
 
-### Metrics Collection (Optional)
+### 📈 Metrics Collection (Optional)
 
 1. Enable Prometheus metrics:
 ```yaml
@@ -232,14 +230,14 @@ labels:
 ```
 
 2. Key metrics:
-- Repository size/growth
-- Backup success rate
-- Resource usage
-- Network bandwidth
+- 📊 Repository size/growth
+- ✅ Backup success rate
+- 💻 Resource usage
+- 🌐 Network bandwidth
 
 ## 🛟 Troubleshooting
 
-### Common Issues
+### ❗ Common Issues
 
 1. Permission Problems:
 ```bash
@@ -261,40 +259,40 @@ sudo showmount -e $NAS_IP
 curl -v http://${KOPIA_SERVER_IP}:${KOPIA_SERVER_PORT}
 ```
 
-### Log Locations
-- Server: /var/log/kopia/server.log
-- Client: /var/log/kopia/client.log
-- System: journalctl -u kopia-server
+### 📝 Log Locations
+- 🖥️ Server: /var/log/kopia/server.log
+- 📱 Client: /var/log/kopia/client.log
+- 🔄 System: journalctl -u kopia-server
 
 ## 🔒 Security Best Practices
 
-1. Strong Authentication:
-   - Use complex passwords (16+ chars)
-   - Enable TLS in production
-   - Restrict server access by IP
+### 🔑 Strong Authentication
+- 🔐 Use complex passwords (16+ chars)
+- 🔒 Enable TLS in production
+- 🛡️ Restrict server access by IP
 
-2. Network Security:
-   - Use private networks
-   - Enable firewall rules
-   - Regular security updates
+### 🌐 Network Security
+- 🔒 Use private networks
+- 🛡️ Enable firewall rules
+- 🔄 Regular security updates
 
-3. Data Protection:
-   - Regular integrity checks
-   - Encrypted backups
-   - Secure NAS access
+### 🛡️ Data Protection
+- ✅ Regular integrity checks
+- 🔐 Encrypted backups
+- 🔒 Secure NAS access
 
 ## 📚 Additional Resources
 
-- [Kopia Documentation](https://kopia.io/docs/)
-- [Docker Documentation](https://docs.docker.com/)
-- [NFS Guide](https://help.ubuntu.com/community/NFSv4Howto)
+- 📖 [Kopia Documentation](https://kopia.io/docs/)
+- 🐳 [Docker Documentation](https://docs.docker.com/)
+- 🔧 [NFS Guide](https://help.ubuntu.com/community/NFSv4Howto)
 
 ## 🤝 Contributing
 
-1. Fork repository
-2. Create feature branch
-3. Commit changes
-4. Create Pull Request
+1. 🔀 Fork repository
+2. 📝 Create feature branch
+3. 💾 Commit changes
+4. 📤 Create Pull Request
 
 ## 📄 License
 
