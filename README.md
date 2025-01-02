@@ -52,7 +52,7 @@ graph TB
 - 💾 2GB RAM minimum (4GB recommended)
 - 🔲 2 CPU cores minimum
 - 💽 10GB free disk space
-- 📡 NFS client utilities
+- 📡 NFS client utilities (tested on Synology NAS)
 - 🌐 Network access to NAS
 
 ### 📱 Client
