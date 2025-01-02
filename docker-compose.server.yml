@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  kopia-server:
+    image: kopia/kopia:latest
+    volumes:
+      - ${KOPIA_REPO_PATH}:/repository
+      - ${NAS_MOUNT_PATH}:/nas
+    environment:
+      - KOPIA_PASSWORD=example_repository_password
+    command: >
+      server start
+      --address 0.0.0.0:51515
+      --server-username example_admin
+      --server-password example_server_password
+      --insecure
+    ports:
+      - "51515:51515"
+    restart: unless-stopped
+
+  kopia-nas-sync:
+    image: kopia/kopia:latest
+    volumes:
+      - ${KOPIA_REPO_PATH}:/repository
+      - ${NAS_MOUNT_PATH}:/nas
+    environment:
+      - KOPIA_PASSWORD=example_repository_password
+    command: >
+      snapshot create /repository
+      --target-path=/nas/kopia-repo
+      --compression=zstd-max
+      --parallel=${KOPIA_PARALLEL_SERVER:-2}
+      --check-integrity=true
+    restart: "no"
+    deploy:
+      resources:
+        limits:
+          cpus: ${KOPIA_SERVER_CPU_LIMIT:-2}
+          memory: ${KOPIA_SERVER_MEM_LIMIT:-2G} 

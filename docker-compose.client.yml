@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  kopia-backup:
+    image: kopia/kopia:latest
+    volumes:
+      - ${DOCKER_VOLUMES}:/backup:ro
+      - ~/.config/kopia:/app/config
+      - ~/.cache/kopia:/app/cache
+    environment:
+      - KOPIA_PASSWORD=example_repository_password
+    command: >
+      snapshot create
+      /backup
+      --override-hostname=example-hostname
+      --compression=zstd-fastest
+      --parallel=${KOPIA_PARALLEL_CLIENT:-4}
+    restart: "no"
+    deploy:
+      resources:
+        limits:
+          cpus: ${KOPIA_CLIENT_CPU_LIMIT:-4}
+          memory: ${KOPIA_CLIENT_MEM_LIMIT:-4G} 
