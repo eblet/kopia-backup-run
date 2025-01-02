@@ -25,37 +25,19 @@ graph TB
             ZA[Alerts]
             ZS[Scripts]
         end
-
-        subgraph "Health Checks"
-            HC[Health Controller]
-            AM[Alert Manager]
-        end
     end
 
-    subgraph "Kopia Stack"
-        KS[Kopia Server]
-        R[(Repository)]
-    end
-
-    KS -->|Status| KE
-    KE -->|Metrics| P
+    KE -->|Export| P
     NE -->|System Metrics| P
     P -->|Store| PD
     P -->|Query| G
     
-    KS -->|Check| ZS
-    ZS -->|Report| Z
-    Z -->|Alert| ZA
-    
-    HC -->|Monitor| KE
-    HC -->|Monitor| P
-    HC -->|Monitor| G
-    HC -->|Alert| AM
+    ZS -->|Check| Z
+    Z -->|Generate| ZA
 
-    style KS fill:#f9f,stroke:#333
-    style P fill:#bbf,stroke:#333
-    style G fill:#bfb,stroke:#333
-    style Z fill:#fbb,stroke:#333
+    style P fill:#f9f,stroke:#333
+    style G fill:#bbf,stroke:#333
+    style Z fill:#bfb,stroke:#333
 ```
 
 ## 🚀 Quick Start

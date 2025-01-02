@@ -25,37 +25,19 @@ graph TB
         end
 
         subgraph "Monitoring Layer"
-            subgraph "Metrics"
-                P[Prometheus]
-                G[Grafana]
-                KE[Kopia Exporter]
-                NE[Node Exporter]
-            end
-            
-            subgraph "Enterprise Monitoring"
-                Z[Zabbix]
-                ZA[Alerts]
-            end
+            M[Monitoring Stack]
         end
     end
 
     C1 & C2 & C3 -->|Backup| KS
     KS -->|Store| R
     R -->|Sync| N
-    
-    KS -->|Metrics| KE
-    KE -->|Export| P
-    NE -->|System Metrics| P
-    P -->|Visualize| G
-    
-    KS -->|Status| Z
-    Z -->|Alert| ZA
+    KS -->|Metrics| M
 
     style KS fill:#f9f,stroke:#333
-    style P fill:#bbf,stroke:#333
-    style G fill:#bfb,stroke:#333
-    style Z fill:#fbb,stroke:#333
-```
+    style M fill:#bbf,stroke:#333
+    style R fill:#bfb,stroke:#333
+    ```
 
 ## 🚀 Quick Start
 
