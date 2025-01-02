@@ -1,0 +1,22 @@
+{
+  "dashboard": {
+    "title": "Kopia Backup Metrics",
+    "panels": [
+      {
+        "title": "Backup Size",
+        "type": "graph",
+        "metrics": ["kopia_backup_size_bytes"]
+      },
+      {
+        "title": "Repository Usage",
+        "type": "gauge",
+        "metrics": ["kopia_repository_usage_bytes"]
+      },
+      {
+        "title": "Backup Duration",
+        "type": "graph",
+        "metrics": ["kopia_backup_duration_seconds"]
+      }
+    ]
+  }
+} 

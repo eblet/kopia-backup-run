@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  prometheus:
+    image: prom/prometheus:${PROMETHEUS_VERSION:-latest}
+    container_name: kopia-prometheus
+    user: "${PROM_USER:-65534}:${PROM_GROUP:-65534}"
+    volumes:
+      - ./prometheus/config/prometheus:/etc/prometheus:ro
+      - ${PROMETHEUS_DATA_DIR:-/var/lib/prometheus}:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}'
+      - '--web.external-url=${PROMETHEUS_EXTERNAL_URL:-http://localhost:9090}'
+    ports:
+      - "${PROMETHEUS_UI_PORT:-9090}:9090"
+    networks:
+      - monitoring_network
+      - kopia_network
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "${LOG_MAX_SIZE:-100M}"
+        max-file: "${LOG_MAX_FILES:-7}"
+    labels:
+      - "com.kopia.type=monitoring"
+      - "com.kopia.component=prometheus"
+
+  grafana:
+    image: grafana/grafana:${GRAFANA_VERSION:-latest}
+    container_name: kopia-grafana
+    user: "${GRAFANA_USER:-472}:${GRAFANA_GROUP:-472}"
+    volumes:
+      - ./prometheus/config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./prometheus/dashboards:/var/lib/grafana/dashboards:ro
+      - ${GRAFANA_DATA_DIR:-/var/lib/grafana}:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_SERVER_ROOT_URL=${GRAFANA_EXTERNAL_URL:-http://localhost:3000}
+      - GF_INSTALL_PLUGINS=${GRAFANA_PLUGINS:-}
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    networks:
+      - monitoring_network
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "${LOG_MAX_SIZE:-100M}"
+        max-file: "${LOG_MAX_FILES:-7}"
+    labels:
+      - "com.kopia.type=monitoring"
+      - "com.kopia.component=grafana"
+
+  kopia-exporter:
+    build: 
+      context: ./prometheus/exporters
+      dockerfile: Dockerfile
+    container_name: kopia-exporter
+    environment:
+      - KOPIA_CONTAINER_NAME=${KOPIA_CONTAINER_NAME:-kopia-server}
+      - KOPIA_EXPORTER_PORT=${KOPIA_EXPORTER_PORT:-9091}
+      - TZ=${TZ:-UTC}
+    ports:
+      - "${KOPIA_EXPORTER_PORT:-9091}:9091"
+    networks:
+      - monitoring_network
+      - kopia_network
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "${LOG_MAX_SIZE:-100M}"
+        max-file: "${LOG_MAX_FILES:-7}"
+    labels:
+      - "com.kopia.type=monitoring"
+      - "com.kopia.component=exporter"
+
+  node-exporter:
+    image: prom/node-exporter:${NODE_EXPORTER_VERSION:-latest}
+    container_name: kopia-node-exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "${NODE_EXPORTER_PORT:-9100}:9100"
+    networks:
+      - monitoring_network
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "${LOG_MAX_SIZE:-100M}"
+        max-file: "${LOG_MAX_FILES:-7}"
+    labels:
+      - "com.kopia.type=monitoring"
+      - "com.kopia.component=node-exporter"
+
+networks:
+  monitoring_network:
+    name: ${MONITORING_NETWORK_NAME:-monitoring_network}
+    driver: ${MONITORING_NETWORK_DRIVER:-bridge}
+  kopia_network:
+    external: true
+    name: ${KOPIA_NETWORK_NAME:-kopia_network} 

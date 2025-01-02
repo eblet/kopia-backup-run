@@ -151,6 +151,22 @@ zabbix_export:
               priority: WARNING
               description: 'Repository space usage is above {$REPO_SPACE_WARN}%'
 
+        # Prometheus metrics integration
+        - name: 'Prometheus backup size'
+          type: HTTP_AGENT
+          key: 'kopia.prometheus.backup.size'
+          url: 'http://localhost:9091/metrics'
+          params:
+            - name: 'kopia_backup_size_bytes'
+          preprocessing:
+            - type: PROMETHEUS_TO_JSON
+            - type: JSON_PATH
+              parameters:
+                - '$.value[1]'
+          tags:
+            - tag: source
+              value: prometheus
+
         - name: 'Repository integrity'
           key: 'kopia.repo.integrity'
           type: ZABBIX_ACTIVE

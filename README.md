@@ -214,17 +214,138 @@ KOPIA_CLIENT_MEM_LIMIT=2G
 
 ## 📊 Monitoring & Maintenance
 
-### 🔍 Service Status
+### 🔍 Monitoring Options
 
+#### 1. Basic Monitoring
+```bash
+# Manual checks
+docker exec kopia-server kopia snapshot list
+docker exec kopia-server kopia repository status
+```
+
+#### 2. Enterprise Monitoring
+Enable monitoring stack:
+```bash
+# Edit monitoring settings in .env
+MONITORING_TYPE=all  # all, zabbix, prometheus, none
+
+# Deploy monitoring
+./scripts/setup_monitoring.sh
+```
+
+Available monitoring options:
+- 🔍 **Zabbix**: Enterprise-grade monitoring and alerting
+- 📊 **Prometheus + Grafana**: Real-time metrics and visualization
+- 🔄 **Combined**: Both systems for comprehensive monitoring
+
+Access monitoring:
+- Zabbix: Configure in your Zabbix server
+- Prometheus: http://localhost:9090
+- Grafana: http://localhost:3000
+
+[Detailed Monitoring Setup](monitoring/README.md)
+
+### 🔐 Security Configuration
+
+#### 🔒 TLS Setup
+1. Generate certificate:
+```bash
+sudo mkdir -p /etc/kopia
+sudo openssl req -x509 -newkey rsa:4096 \
+  -keyout /etc/kopia/key.pem \
+  -out /etc/kopia/cert.pem \
+  -days 365 -nodes \
+  -subj "/CN=kopia-server"
+```
+
+2. Configure TLS:
+```bash
+KOPIA_SECURE_MODE=true
+KOPIA_TLS_CERT_PATH=/etc/kopia/cert.pem
+KOPIA_SERVER_ALLOWED_IPS=10.0.0.0/24
+```
+
+### ⚡ Performance Optimization
+
+1. Cache Settings:
+```bash
+# Memory-based sizing
+KOPIA_CACHE_SIZE=5G
+KOPIA_PARALLEL_CLIENT=4
+```
+
+2. Network Limits:
+```bash
+# Bandwidth control
+KOPIA_UPLOAD_LIMIT=50M
+KOPIA_DOWNLOAD_LIMIT=50M
+```
+
+### 📊 Resource Planning
+
+1. Server Resources:
+```bash
+# Scale with data size
+KOPIA_SERVER_CPU_LIMIT=2
+KOPIA_SERVER_MEM_LIMIT=4G
+```
+
+2. Client Resources:
+```bash
+# Scale with backup size
+KOPIA_CLIENT_CPU_LIMIT=4
+KOPIA_CLIENT_MEM_LIMIT=2G
+```
+
+## 📊 Monitoring & Maintenance
+
+### 🔍 Monitoring Options
+
+#### 1. Basic Monitoring
 ```bash
 # Server checks
 systemctl status kopia-server
 docker logs kopia-server
 tail -f /var/log/kopia/server.log
+docker exec kopia-server kopia snapshot list
+docker exec kopia-server kopia repository status
 
 # Client checks
 docker logs kopia-client
 tail -f /var/log/kopia/client.log
+```
+
+#### 2. Zabbix Integration (Enterprise)
+For detailed alerting and reporting with Zabbix 6.0+:
+```bash
+# Enable Zabbix monitoring
+cd zabbix && ./setup.sh
+```
+[Detailed Zabbix Setup](zabbix/README.md)
+
+#### 3. Prometheus + Grafana (Metrics)
+For real-time metrics and visualization:
+```bash
+# Enable Prometheus monitoring
+PROMETHEUS_ENABLE=true
+PROMETHEUS_PORT=9091
+```
+[Detailed Prometheus Setup](prometheus/README.md)
+
+### 📈 Monitoring Architecture
+```mermaid
+graph TB
+    subgraph "Monitoring"
+        Z[Zabbix] -->|Alerts & Reports| A[Alerts]
+        P[Prometheus] -->|Metrics| G[Grafana]
+        G -->|Dashboards| V[Visualization]
+    end
+
+    subgraph "Kopia Stack"
+        K[Kopia Server] -->|Status| Z
+        K -->|Metrics| P
+        E[Kopia Exporter] -->|Custom Metrics| P
+    end
 ```
 
 ### 💾 Backup Management
@@ -242,18 +363,50 @@ systemctl start kopia-nas-sync.service
 
 ### 📈 Metrics Collection (Optional)
 
-1. Enable Prometheus metrics:
-```yaml
-labels:
-  - "prometheus.enable=true"
-  - "prometheus.port=9091"
+#### 🔄 Basic Monitoring
+```bash
+# List snapshots
+docker exec kopia-server kopia snapshot list
+
+# Verify repository
+docker exec kopia-server kopia repository status
+
+# Manual sync to NAS
+systemctl start kopia-nas-sync.service
 ```
 
-2. Key metrics:
-- 📊 Repository size/growth
-- ✅ Backup success rate
-- 💻 Resource usage
-- 🌐 Network bandwidth
+#### 🔍 Zabbix Integration
+For enterprise monitoring with Zabbix 6.0+:
+
+1. Add monitoring configuration to .env:
+```bash
+# Zabbix monitoring settings
+KOPIA_CONTAINER_NAME=kopia-server
+ZABBIX_EXTERNAL_SCRIPTS=/usr/lib/zabbix/externalscripts
+ZABBIX_AGENT_CONFIG=/etc/zabbix/zabbix_agentd.d
+```
+
+2. Install monitoring components:
+```bash
+# Install Zabbix agent if not installed
+sudo apt install -y zabbix-agent
+
+# Deploy monitoring
+cd zabbix && ./setup.sh
+```
+
+3. Import template in Zabbix web interface:
+- Go to Configuration → Templates
+- Import template_kopia.yaml
+- Assign template to your host
+
+Monitored metrics include:
+- 🔄 Backup status and validation
+- 💾 Repository health and size
+- 🌐 NAS connectivity
+- 📊 Performance metrics
+
+For detailed Zabbix setup and configuration, see [Zabbix Integration Guide](zabbix/README.md)
 
 ## 🛟 Troubleshooting
 
