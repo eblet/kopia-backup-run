@@ -1,4 +1,4 @@
-Kopia Backup System 🚀
+Kopia Backup Run Scripts 🚀
 ======================
 
 Enterprise-ready configuration for Kopia backup system with Docker support.
