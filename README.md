@@ -30,7 +30,7 @@ graph TB
         S -->|Store| R[(Repository)]
     end
 
-    subgraph "Synology NAS"
+    subgraph "NAS"
         N[(NAS Storage)]
     end
 
