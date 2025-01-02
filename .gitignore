@@ -1,0 +1,46 @@
+ # Environment files
+.env
+.env.*
+!.env.example
+
+# Kopia specific
+.kopia/
+.cache/
+repository/
+
+# Logs
+*.log
+logs/
+/var/log/kopia/
+
+# Docker
+docker-compose.override.yml
+docker-compose.client.generated.yml
+
+# System specific
+.DS_Store
+Thumbs.db
+
+# IDE specific
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Generated certificates
+*.pem
+*.crt
+*.key
+
+# Mount points
+/mnt/*
+/nas/*
+
+# Local test files
+test/
+tests/
