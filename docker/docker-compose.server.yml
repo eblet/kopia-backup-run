@@ -47,11 +47,11 @@ services:
     labels:
       - "com.kopia.version=${KOPIA_VERSION:-latest}"
       - "com.kopia.type=server"
-      - "com.kopia.monitoring=true"
       - "com.kopia.description=Kopia Backup Server"
 
 networks:
   kopia_network:
+    name: ${KOPIA_NETWORK_NAME:-kopia_network}
     driver: bridge
     labels:
       - "com.kopia.network=true"

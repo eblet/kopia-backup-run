@@ -1,0 +1,26 @@
+global:
+  scrape_interval: ${PROMETHEUS_SCRAPE_INTERVAL:-15s}
+  evaluation_interval: ${PROMETHEUS_EVAL_INTERVAL:-15s}
+  scrape_timeout: ${PROMETHEUS_SCRAPE_TIMEOUT:-10s}
+
+rule_files:
+  - "rules/*.yml"
+
+scrape_configs:
+  - job_name: 'kopia'
+    static_configs:
+      - targets: ['kopia-exporter:${KOPIA_EXPORTER_PORT:-9091}']
+    metrics_path: '/metrics'
+    scheme: 'http'
+
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:${NODE_EXPORTER_PORT:-9100}']
+    metrics_path: '/metrics'
+    scheme: 'http'
+
+  - job_name: 'kopia-server'
+    static_configs:
+      - targets: ['${KOPIA_SERVER_IP}:${KOPIA_SERVER_PORT}']
+    metrics_path: '/metrics'
+    scheme: '${KOPIA_SECURE_MODE:+https}${KOPIA_SECURE_MODE:-http}' 

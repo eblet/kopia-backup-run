@@ -1,0 +1,29 @@
+groups:
+  - name: kopia_alerts
+    rules:
+      - alert: KopiaBackupTooOld
+        expr: time() - kopia_backup_age_seconds > 86400  # 24 hours
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backup too old"
+          description: "Last backup is more than 24 hours old"
+
+      - alert: KopiaBackupFailed
+        expr: kopia_backup_validation == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backup validation failed"
+          description: "Last backup validation check failed"
+
+      - alert: KopiaRepositoryGrowth
+        expr: rate(kopia_repository_size_bytes[1d]) > 1e9  # 1GB per day
+        for: 1d
+        labels:
+          severity: warning
+        annotations:
+          summary: "Unusual repository growth"
+          description: "Repository growing faster than 1GB per day" 
