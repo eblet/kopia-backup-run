@@ -77,8 +77,8 @@ git clone https://github.com/yourusername/kopia-backup-system
 cd kopia-backup-system
 
 # Configure core settings
-cp .env.example .env.core
-vim .env.core  # Edit only core settings
+cp .env.example .env
+nano .env
 
 # Deploy Kopia server
 ./scripts/setup.sh
