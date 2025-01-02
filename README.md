@@ -5,7 +5,7 @@
 Kopia Backup System provides a robust, containerized backup solution with:
 - 🔄 Centralized backup server
 - 📱 Distributed backup clients
-- 💾 NAS synchronization
+- 💾 NAS synchronization (tested with Synology)
 - ⚡ Automated maintenance
 - 📊 Monitoring capabilities
 
@@ -52,7 +52,7 @@ graph TB
 - 💾 2GB RAM minimum (4GB recommended)
 - 🔲 2 CPU cores minimum
 - 💽 10GB free disk space
-- 📡 NFS client utilities (tested on Synology NAS)
+- 📡 NFS client utilities
 - 🌐 Network access to NAS
 
 ### 📱 Client
