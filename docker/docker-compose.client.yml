@@ -8,18 +8,35 @@ services:
       - ${KOPIA_CONFIG_DIR}:/app/config
       - ${KOPIA_CACHE_DIR}:/app/cache
       - /var/log/kopia:/var/log/kopia
+      # Volumes will be added dynamically by the script
     environment:
       - KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD}
       - TZ=UTC
     command: >
-      snapshot create
-      /backup
-      --override-hostname=${KOPIA_CLIENT_HOSTNAME}
-      --compression=${BACKUP_COMPRESSION:-zstd-fastest}
-      --parallel=${KOPIA_PARALLEL_CLIENT:-4}
+      repository connect server
+      --url=${KOPIA_SECURE_MODE:+https://}${KOPIA_SECURE_MODE:-http://}${KOPIA_SERVER_IP}:${KOPIA_SERVER_PORT}
+      --username=${KOPIA_SERVER_USERNAME}
+      --password=${KOPIA_SERVER_PASSWORD}
+      --override-hostname=${KOPIA_CLIENT_HOSTNAME:-$(hostname)}
+      --cache-directory=/app/cache
+      --max-cache-size=${KOPIA_CACHE_SIZE:-5G}
+      --max-upload-speed=${KOPIA_UPLOAD_LIMIT:-0}
+      --max-download-speed=${KOPIA_DOWNLOAD_LIMIT:-0}
+      ${KOPIA_SECURE_MODE:+--server-cert-fingerprint=$(openssl x509 -fingerprint -sha256 -noout -in ${KOPIA_TLS_CERT_PATH} | cut -d= -f2)}
+    network_mode: host
     restart: "no"
     deploy:
       resources:
         limits:
-          cpus: ${KOPIA_CLIENT_CPU_LIMIT:-4}
-          memory: ${KOPIA_CLIENT_MEM_LIMIT:-4G} 
+          cpus: '${KOPIA_CLIENT_CPU_LIMIT}'
+          memory: ${KOPIA_CLIENT_MEM_LIMIT}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "${LOG_MAX_SIZE}"
+        max-file: "${LOG_MAX_FILES}"
+    healthcheck:
+      test: ["CMD", "kopia", "repository", "status"]
+      interval: 1m
+      timeout: 10s
+      retries: 3 

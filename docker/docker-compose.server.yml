@@ -5,8 +5,8 @@ services:
     image: kopia/kopia:latest
     container_name: kopia-server
     volumes:
-      - ${KOPIA_BASE_DIR}:/var/lib/kopia
-      - ${NAS_MOUNT_PATH}:/nas
+      - ${KOPIA_BASE_DIR}:${KOPIA_BASE_DIR}
+      - ${NAS_MOUNT_PATH}:${NAS_MOUNT_PATH}
       - /var/log/kopia:/var/log/kopia
     environment:
       - KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD}
@@ -18,8 +18,14 @@ services:
       --server-password ${KOPIA_SERVER_PASSWORD}
       ${KOPIA_SECURE_MODE:+--tls-generate-cert}
       ${KOPIA_SECURE_MODE:-"--insecure"}
+      ${KOPIA_SERVER_ALLOWED_IPS:+--server-control-access=${KOPIA_SERVER_ALLOWED_IPS}}
+      --server-cache-directory=${KOPIA_CACHE_DIR}
+      --max-upload-speed=${KOPIA_UPLOAD_LIMIT}
+      --max-download-speed=${KOPIA_DOWNLOAD_LIMIT}
     ports:
       - "${KOPIA_SERVER_PORT}:${KOPIA_SERVER_PORT}"
+    networks:
+      - kopia_network
     restart: unless-stopped
     deploy:
       resources:
@@ -34,25 +40,31 @@ services:
     logging:
       driver: "json-file"
       options:
-        max-size: "100m"
-        max-file: "5"
+        max-size: "${LOG_MAX_SIZE}"
+        max-file: "${LOG_MAX_FILES}"
+    labels:
+      - "prometheus.enable=true"
 
   kopia-nas-sync:
     image: kopia/kopia:latest
     container_name: kopia-nas-sync
     volumes:
-      - ${KOPIA_BASE_DIR}:/var/lib/kopia
-      - ${NAS_MOUNT_PATH}:/nas
+      - ${KOPIA_BASE_DIR}:${KOPIA_BASE_DIR}
+      - ${NAS_MOUNT_PATH}:${NAS_MOUNT_PATH}
       - /var/log/kopia:/var/log/kopia
     environment:
       - KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD}
       - TZ=UTC
     command: >
-      snapshot create /var/lib/kopia
-      --target-path=/nas/kopia-repo
+      snapshot create ${KOPIA_REPO_PATH}
+      --target-path=${NAS_MOUNT_PATH}/kopia-repo
       --compression=zstd-max
       --parallel=${KOPIA_PARALLEL_SERVER}
       --check-integrity=${BACKUP_VERIFY}
+      --max-upload-speed=${KOPIA_UPLOAD_LIMIT}
+      --max-download-speed=${KOPIA_DOWNLOAD_LIMIT}
+    networks:
+      - kopia_network
     restart: "no"
     deploy:
       resources:
@@ -62,5 +74,7 @@ services:
     logging:
       driver: "json-file"
       options:
-        max-size: "100m"
-        max-file: "5" 
+        max-size: "${LOG_MAX_SIZE}"
+        max-file: "${LOG_MAX_FILES}"
+    depends_on:
+      - kopia-server 

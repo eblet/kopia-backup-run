@@ -1,46 +1,65 @@
- # Environment files
+# Environment files
 .env
 .env.*
 !.env.example
 
 # Kopia specific
 .kopia/
+.kopia-*
 .cache/
 repository/
 
-# Logs
+# Logs and debugging
 *.log
 logs/
 /var/log/kopia/
+debug/
 
-# Docker
+# Docker related
 docker-compose.override.yml
 docker-compose.client.generated.yml
+.docker/
+
+# Security and certificates
+*.pem
+*.crt
+*.key
+*.cert
+*.ca
+*.csr
 
 # System specific
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# IDE specific
+# IDE and editor files
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
 
-# Temporary files
+# Temporary and backup files
 *.tmp
 *.temp
 *.bak
+*.backup
+*.old
 
-# Generated certificates
-*.pem
-*.crt
-*.key
-
-# Mount points
+# Mount points and data
 /mnt/*
 /nas/*
+/data/*
 
-# Local test files
+# Test and development
 test/
 tests/
+coverage/
+.coverage
+
+# Build and compilation
+dist/
+build/
+*.pyc
+__pycache__/
