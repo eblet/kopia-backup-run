@@ -1,11 +1,11 @@
 # 📊 Kopia Monitoring Stack
 
 ## 📋 Overview
-Integrated monitoring solution for Kopia Backup System:
-- 🔍 Prometheus metrics collection
-- 📈 Grafana visualization
-- 🚨 Zabbix enterprise monitoring
-- 📱 Mobile-friendly dashboards
+Integrated monitoring solution with:
+- 🔍 Real-time metrics via Prometheus
+- 📈 Visual dashboards in Grafana
+- 🚨 Enterprise monitoring with Zabbix
+- 📱 Mobile-friendly interface
 
 ## 🏗️ Architecture
 
@@ -127,6 +127,18 @@ curl http://localhost:3000/api/datasources/proxy/1/api/v1/query?query=up
 /usr/lib/zabbix/externalscripts/check_kopia_backup.sh
 /usr/lib/zabbix/externalscripts/check_repository.sh
 ```
+
+## 🚨 Alerts
+- Backup age monitoring
+- Repository growth tracking
+- Component availability checks
+- Validation status monitoring
+
+## 🔍 Health Monitoring
+All components include health checks:
+- Prometheus: http://localhost:9090/-/healthy
+- Grafana: http://localhost:3000/api/health
+- Kopia Exporter: http://localhost:9091/metrics
 
 ## 🔒 Security
 

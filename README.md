@@ -64,6 +64,7 @@ nano .env
 
 # Deploy Kopia server
 ./scripts/setup.sh
+or
 docker-compose -f docker/docker-compose.server.yml up -d
 
 # Verify deployment

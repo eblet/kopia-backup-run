@@ -96,6 +96,11 @@ zabbix_export:
               priority: HIGH
               description: 'Last backup validation failed'
 
+        - expression: 'nodata(/Template Kopia Backup/kopia.backup.status,1h)=1'
+          name: 'Kopia: No backup status data'
+          priority: WARNING
+          description: 'No backup status data for 1 hour'
+
         - name: 'Backup size'
           key: 'kopia.backup.size'
           type: ZABBIX_ACTIVE
