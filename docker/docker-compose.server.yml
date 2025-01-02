@@ -3,37 +3,64 @@ version: '3.8'
 services:
   kopia-server:
     image: kopia/kopia:latest
+    container_name: kopia-server
     volumes:
-      - ${KOPIA_REPO_PATH}:/repository
+      - ${KOPIA_BASE_DIR}:/var/lib/kopia
       - ${NAS_MOUNT_PATH}:/nas
+      - /var/log/kopia:/var/log/kopia
     environment:
-      - KOPIA_PASSWORD=example_repository_password
+      - KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD}
+      - TZ=UTC
     command: >
       server start
-      --address 0.0.0.0:51515
-      --server-username example_admin
-      --server-password example_server_password
-      --insecure
+      --address 0.0.0.0:${KOPIA_SERVER_PORT}
+      --server-username ${KOPIA_SERVER_USERNAME}
+      --server-password ${KOPIA_SERVER_PASSWORD}
+      ${KOPIA_SECURE_MODE:+--tls-generate-cert}
+      ${KOPIA_SECURE_MODE:-"--insecure"}
     ports:
-      - "51515:51515"
+      - "${KOPIA_SERVER_PORT}:${KOPIA_SERVER_PORT}"
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '${KOPIA_SERVER_CPU_LIMIT}'
+          memory: ${KOPIA_SERVER_MEM_LIMIT}
+    healthcheck:
+      test: ["CMD", "kopia", "repository", "status"]
+      interval: 5m
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
 
   kopia-nas-sync:
     image: kopia/kopia:latest
+    container_name: kopia-nas-sync
     volumes:
-      - ${KOPIA_REPO_PATH}:/repository
+      - ${KOPIA_BASE_DIR}:/var/lib/kopia
       - ${NAS_MOUNT_PATH}:/nas
+      - /var/log/kopia:/var/log/kopia
     environment:
-      - KOPIA_PASSWORD=example_repository_password
+      - KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD}
+      - TZ=UTC
     command: >
-      snapshot create /repository
+      snapshot create /var/lib/kopia
       --target-path=/nas/kopia-repo
       --compression=zstd-max
-      --parallel=${KOPIA_PARALLEL_SERVER:-2}
-      --check-integrity=true
+      --parallel=${KOPIA_PARALLEL_SERVER}
+      --check-integrity=${BACKUP_VERIFY}
     restart: "no"
     deploy:
       resources:
         limits:
-          cpus: ${KOPIA_SERVER_CPU_LIMIT:-2}
-          memory: ${KOPIA_SERVER_MEM_LIMIT:-2G} 
+          cpus: '${KOPIA_SERVER_CPU_LIMIT}'
+          memory: ${KOPIA_SERVER_MEM_LIMIT}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5" 
