@@ -26,7 +26,7 @@ Enterprise-grade backup solution using Kopia with Docker support.
 1. Clone repository and configure environment:
 ```bash
 git clone https://github.com/eblet/kopia-backup-run
-cd kopia-backup
+cd kopia-backup-run
 cp .env.example .env
 ```
 
