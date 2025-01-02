@@ -2,13 +2,13 @@ version: '3.8'
 
 services:
   kopia-server:
-    image: kopia/kopia:latest
+    image: kopia/kopia:${KOPIA_VERSION:-latest}
     container_name: kopia-server
     volumes:
       - ${KOPIA_BASE_DIR}:${KOPIA_BASE_DIR}:rw
       - ${NAS_MOUNT_PATH}:${NAS_MOUNT_PATH}:rw
-      - /var/log/kopia:/var/log/kopia:rw
-      - ${KOPIA_CACHE_DIR:-/var/cache/kopia}:/app/cache:rw
+      - ${KOPIA_LOG_DIR}:${KOPIA_LOG_DIR}:rw
+      - ${KOPIA_CACHE_DIR}:${KOPIA_CONTAINER_CACHE_DIR}:rw
     environment:
       - KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD}
       - TZ=${TZ:-UTC}
@@ -20,7 +20,7 @@ services:
       ${KOPIA_SECURE_MODE:+--tls-generate-cert}
       ${KOPIA_SECURE_MODE:-"--insecure"}
       ${KOPIA_SERVER_ALLOWED_IPS:+--server-control-access=${KOPIA_SERVER_ALLOWED_IPS}}
-      --server-cache-directory=/app/cache
+      --server-cache-directory=${KOPIA_CONTAINER_CACHE_DIR}
       --max-upload-speed=${KOPIA_UPLOAD_LIMIT:-0}
       --max-download-speed=${KOPIA_DOWNLOAD_LIMIT:-0}
     ports:
@@ -34,7 +34,7 @@ services:
           cpus: '${KOPIA_SERVER_CPU_LIMIT:-2}'
           memory: ${KOPIA_SERVER_MEM_LIMIT:-2G}
     healthcheck:
-      test: ["CMD", "kopia", "repository", "status"]
+      test: ["CMD", "kopia", "repository", "status", "||", "exit", "1"]
       interval: 5m
       timeout: 10s
       retries: 3
@@ -44,7 +44,14 @@ services:
       options:
         max-size: "${LOG_MAX_SIZE:-100M}"
         max-file: "${LOG_MAX_FILES:-7}"
+    labels:
+      - "com.kopia.version=${KOPIA_VERSION:-latest}"
+      - "com.kopia.type=server"
+      - "com.kopia.monitoring=true"
+      - "com.kopia.description=Kopia Backup Server"
 
 networks:
   kopia_network:
     driver: bridge
+    labels:
+      - "com.kopia.network=true"

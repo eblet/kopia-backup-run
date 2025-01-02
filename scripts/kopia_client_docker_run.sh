@@ -1,6 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
+# Find required binaries
+DOCKER_BIN=$(which docker) || { echo "ERROR: docker not found"; exit 1; }
+DOCKER_COMPOSE_BIN=$(which docker-compose) || { echo "ERROR: docker-compose not found"; exit 1; }
+JQ_BIN=$(which jq) || { echo "ERROR: jq not found"; exit 1; }
+
+# Version requirements
+REQUIRED_DOCKER_VERSION="20.10.0"
+REQUIRED_COMPOSE_VERSION="2.0.0"
+
 # Load environment variables
 if [ ! -f .env ]; then
     echo "ERROR: .env file not found"
@@ -8,9 +17,30 @@ if [ ! -f .env ]; then
 fi
 source .env
 
-# Logging function
+# Logging function with timestamps and levels
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    local level=$1
+    local message=$2
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [${level}] ${message}"
+}
+
+# Check versions
+check_versions() {
+    log "INFO" "Checking software versions..."
+    
+    # Check Docker version
+    local docker_version=$($DOCKER_BIN version --format '{{.Server.Version}}')
+    if ! printf '%s\n%s\n' "${REQUIRED_DOCKER_VERSION}" "${docker_version}" | sort -C -V; then
+        log "ERROR" "Docker version ${docker_version} is less than required ${REQUIRED_DOCKER_VERSION}"
+        exit 1
+    fi
+
+    # Check Docker Compose version
+    local compose_version=$($DOCKER_COMPOSE_BIN version --short)
+    if ! printf '%s\n%s\n' "${REQUIRED_COMPOSE_VERSION}" "${compose_version}" | sort -C -V; then
+        log "ERROR" "Docker Compose version ${compose_version} is less than required ${REQUIRED_COMPOSE_VERSION}"
+        exit 1
+    fi
 }
 
 # Validate environment variables
@@ -102,7 +132,7 @@ setup_dirs() {
     local dirs=(
         "${KOPIA_CONFIG_DIR}"
         "${KOPIA_CACHE_DIR}"
-        "/var/log/kopia"
+        "${KOPIA_LOG_DIR}"
     )
 
     for dir in "${dirs[@]}"; do
@@ -223,22 +253,53 @@ check_system_requirements() {
     fi
 }
 
+# Check disk space for logs
+check_log_space() {
+    log "INFO" "Checking available space for logs..."
+    local required_space=1024  # 1GB in MB
+    local available_space=$(df -m "${KOPIA_LOG_DIR}" | awk 'NR==2 {print $4}')
+    
+    if [ "${available_space}" -lt "${required_space}" ]; then
+        log "WARNING" "Less than 1GB free space available for logs in ${KOPIA_LOG_DIR}"
+    fi
+}
+
+# Check permissions
+check_permissions() {
+    log "INFO" "Checking directory permissions..."
+    local dirs=(
+        "${KOPIA_CONFIG_DIR}"
+        "${KOPIA_CACHE_DIR}"
+        "${KOPIA_LOG_DIR}"
+    )
+
+    for dir in "${dirs[@]}"; do
+        if [ ! -w "$dir" ]; then
+            log "ERROR" "Directory $dir is not writable"
+            exit 1
+        fi
+    done
+}
+
 # Main execution
 main() {
-    log "Starting Kopia client backup process..."
+    log "INFO" "Starting Kopia client backup process..."
     
+    check_versions
     check_system_requirements
+    check_log_space
+    check_permissions
     validate_env
     setup_dirs
     validate_volumes_config
     check_server
     run_backup
 
-    log "Backup process completed successfully"
+    log "INFO" "Backup process completed successfully"
 }
 
-# Trap for cleanup
-trap 'cleanup_and_exit 1' INT TERM
+# Trap for cleanup with logging
+trap 'log "ERROR" "Script interrupted"; cleanup_and_exit 1' INT TERM
 
 # Run main function
 main "$@"

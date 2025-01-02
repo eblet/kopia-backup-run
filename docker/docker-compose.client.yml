@@ -2,23 +2,24 @@ version: '3.8'
 
 services:
   kopia-backup:
-    image: kopia/kopia:latest
+    image: kopia/kopia:${KOPIA_VERSION:-latest}
     container_name: kopia-client
     volumes:
-      - ${KOPIA_CONFIG_DIR}:/app/config:rw
-      - ${KOPIA_CACHE_DIR}:/app/cache:rw
-      - /var/log/kopia:/var/log/kopia:rw
+      - ${KOPIA_CONFIG_DIR}:${KOPIA_CONTAINER_CONFIG_DIR}:rw
+      - ${KOPIA_CACHE_DIR}:${KOPIA_CONTAINER_CACHE_DIR}:rw
+      - ${KOPIA_LOG_DIR}:${KOPIA_LOG_DIR}:rw
       # Volumes will be added dynamically by the script
     environment:
       - KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD}
       - TZ=${TZ:-UTC}
+      - KOPIA_CHECK_FOR_UPDATES=false
     command: >
       repository connect server
       --url=${KOPIA_SECURE_MODE:+https://}${KOPIA_SECURE_MODE:-http://}${KOPIA_SERVER_IP}:${KOPIA_SERVER_PORT}
       --username=${KOPIA_SERVER_USERNAME}
       --password=${KOPIA_SERVER_PASSWORD}
       --override-hostname=${KOPIA_CLIENT_HOSTNAME:-$(hostname)}
-      --cache-directory=/app/cache
+      --cache-directory=${KOPIA_CONTAINER_CACHE_DIR}
       --max-cache-size=${KOPIA_CACHE_SIZE:-5G}
       --max-upload-speed=${KOPIA_UPLOAD_LIMIT:-0}
       --max-download-speed=${KOPIA_DOWNLOAD_LIMIT:-0}
@@ -31,7 +32,7 @@ services:
           cpus: '${KOPIA_CLIENT_CPU_LIMIT:-4}'
           memory: ${KOPIA_CLIENT_MEM_LIMIT:-4G}
     healthcheck:
-      test: ["CMD", "kopia", "repository", "status"]
+      test: ["CMD", "kopia", "repository", "status", "||", "exit", "1"]
       interval: 1m
       timeout: 10s
       retries: 3
@@ -41,3 +42,8 @@ services:
       options:
         max-size: "${LOG_MAX_SIZE:-100M}"
         max-file: "${LOG_MAX_FILES:-7}"
+    labels:
+      - "com.kopia.version=${KOPIA_VERSION:-latest}"
+      - "com.kopia.type=client"
+      - "com.kopia.monitoring=true"
+      - "com.kopia.description=Kopia Backup Client"
