@@ -41,37 +41,114 @@ graph TB
 
 ## 🚀 Quick Start
 
-### 1. Core Setup (Required)
+### 1. Server Setup (Required)
 
 #### Prerequisites
 ```bash
-# Minimum requirements
+# Server Requirements
 - Docker Engine 20.10+
 - Docker Compose 2.0+
-- 2GB RAM
-- 1 CPU core
+- 2GB RAM minimum
+- 10GB disk space
+- NFS server access
 ```
 
-#### Basic Installation
+#### Server Installation
 ```bash
 # Clone repository
 git clone https://github.com/eblet/kopia-backup-run
 cd kopia-backup-run
 
-# Configure core settings
+# Configure server settings
 cp .env.example .env
 nano .env
 
-# Deploy Kopia server
-./scripts/setup.sh
+# Required Server Variables
+KOPIA_REPO_PASSWORD=strong-password-here      # Min 16 chars
+KOPIA_SERVER_USERNAME=admin                   # Min 8 chars
+KOPIA_SERVER_PASSWORD=another-strong-password # Min 16 chars
+KOPIA_SERVER_IP=192.168.1.100                # Server IP
+
+# NAS Configuration
+NAS_IP=192.168.1.200
+NAS_SHARE=/backup
+NAS_MOUNT_PATH=/mnt/nas
+
+# Deploy server
+sudo ./scripts/setup_server.sh
 or
 docker-compose -f docker/docker-compose.server.yml up -d
-
-# Verify deployment
-docker logs kopia-server
 ```
 
-### 2. Monitoring Setup (Optional)
+#### Verify Server
+```bash
+# Check server status
+systemctl status kopia-server
+
+# Check logs
+journalctl -u kopia-server
+
+# Test repository
+docker exec kopia-server kopia repository status
+```
+
+### 2. Client Setup
+
+#### Prerequisites
+```bash
+# Client Requirements
+- Docker Engine 20.10+
+- Docker Compose 2.0+
+- 1GB RAM minimum
+- Access to Kopia server
+```
+
+#### Client Configuration
+```bash
+# Clone repository on client machine
+git clone https://github.com/eblet/kopia-backup-run
+cd kopia-backup-run
+
+# Configure client settings
+cp .env.example .env
+nano .env
+
+# Required Client Variables
+KOPIA_REPO_PASSWORD=same-as-server-password
+KOPIA_SERVER_USERNAME=admin
+KOPIA_SERVER_PASSWORD=server-password
+KOPIA_SERVER_IP=192.168.1.100    # Server IP
+
+# Configure backup paths
+DOCKER_VOLUMES='{
+    "/path/to/config": {
+        "name": "app-config",
+        "tags": ["type:config"],
+        "compression": "zstd-max",
+        "priority": 2
+    }
+    "/path/to/data2": {
+        "name": "app-data2",
+        "tags": ["type:data2", "app:myapp2"],
+        "compression": "zstd-fastest",
+        "priority": 1
+    },
+}'
+```
+
+#### Run Client Backup
+```bash
+# Manual backup
+./scripts/setup_client.sh
+
+# Setup scheduled backup (optional)
+crontab -e
+# Add: 0 2 * * * /path/to/kopia-backup-run/scripts/setup_client.sh
+```
+
+### 3. Monitoring Setup (Optional)
+
+#### Deploy Monitoring Stack
 
 If you want to add monitoring later:
 
@@ -84,42 +161,7 @@ If you want to add monitoring later:
 - Prometheus: http://localhost:9090
 ```
 
-## 🔧 Core Configuration
-
-### Required Environment Variables
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| KOPIA_REPO_PASSWORD | Repository encryption | ✅ | - |
-| KOPIA_SERVER_USERNAME | Admin username | ✅ | - |
-| KOPIA_SERVER_PASSWORD | Admin password | ✅ | - |
-| KOPIA_SERVER_IP | Server address | ✅ | - |
-
-### Example Configurations
-
-#### Minimal Setup
-```bash
-KOPIA_REPO_PASSWORD=strong-password-here
-KOPIA_SERVER_USERNAME=admin
-KOPIA_SERVER_PASSWORD=another-strong-password
-KOPIA_SERVER_IP=192.168.1.100
-```
-
-#### Production Setup
-```bash
-# Security
-KOPIA_SECURE_MODE=true
-KOPIA_SERVER_ALLOWED_IPS=10.0.0.0/24
-
-# Performance
-KOPIA_PARALLEL_SERVER=4
-KOPIA_CACHE_SIZE=10G
-
-# Monitoring
-MONITORING_TYPE=all
-GRAFANA_ADMIN_PASSWORD=secure-password
-```
-
-## 📊 Monitoring Options
+## 🔧 Monitoring Options
 
 ### 1. Basic Monitoring
 ```bash
@@ -172,6 +214,29 @@ docker logs kopia-prometheus
 docker logs kopia-grafana
 docker logs kopia-exporter
 ```
+
+## 📚 Configuration Reference
+
+### Server Configuration
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| KOPIA_REPO_PASSWORD | Repository encryption | ✅ | - |
+| KOPIA_SERVER_USERNAME | Admin username | ✅ | - |
+| KOPIA_SERVER_PASSWORD | Admin password | ✅ | - |
+| KOPIA_SERVER_IP | Server address | ✅ | - |
+| NAS_IP | NAS server address | ✅ | - |
+| NAS_SHARE | NFS share path | ✅ | - |
+| KOPIA_SECURE_MODE | Enable TLS | ❌ | false |
+
+### Client Configuration
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| KOPIA_REPO_PASSWORD | Same as server | ✅ | - |
+| KOPIA_SERVER_USERNAME | Server username | ✅ | - |
+| KOPIA_SERVER_PASSWORD | Server password | ✅ | - |
+| KOPIA_SERVER_IP | Server address | ✅ | - |
+| DOCKER_VOLUMES | Backup paths | ✅ | - |
+| BACKUP_VERIFY | Verify after backup | ❌ | true |
 
 ## 📚 Documentation
 - [Detailed Configuration](docs/configuration.md)
