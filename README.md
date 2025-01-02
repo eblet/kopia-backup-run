@@ -13,8 +13,20 @@ Kopia Backup System provides a robust, containerized backup solution with:
 
 ```mermaid
 graph TB
-    subgraph "Backup Infrastructure"
-        C[Kopia Client] -->|Backup| S[Kopia Server]
+    subgraph "Client Machine"
+        V1["/var/lib/data"] -->|Mount| C
+        V2["/etc/config"] -->|Mount| C
+        V3["/app/files"] -->|Mount| C
+        subgraph "Docker Volumes"
+            V1
+            V2
+            V3
+        end
+        C[Kopia Client]
+    end
+
+    subgraph "Server Machine"
+        C -->|Backup| S[Kopia Server]
         S -->|Store| R[(Repository)]
         R -->|Sync| N[(NAS Storage)]
         
@@ -29,6 +41,9 @@ graph TB
     style C fill:#bbf,stroke:#333
     style R fill:#bfb,stroke:#333
     style N fill:#fbb,stroke:#333
+    style V1 fill:#dfd,stroke:#333
+    style V2 fill:#dfd,stroke:#333
+    style V3 fill:#dfd,stroke:#333
 ```
 
 ## 🔧 System Components
