@@ -14,8 +14,8 @@ services:
     command: >
       snapshot create
       /backup
-      --override-hostname=example-hostname
-      --compression=zstd-fastest
+      --override-hostname=${KOPIA_CLIENT_HOSTNAME}
+      --compression=${BACKUP_COMPRESSION:-zstd-fastest}
       --parallel=${KOPIA_PARALLEL_CLIENT:-4}
     restart: "no"
     deploy:
