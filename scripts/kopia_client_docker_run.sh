@@ -13,8 +13,10 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
-# Validate environment
+# Validate environment variables
 validate_env() {
+    log "Validating environment variables..."
+    
     local required_vars=(
         "KOPIA_REPO_PASSWORD"
         "KOPIA_SERVER_USERNAME"
@@ -23,48 +25,72 @@ validate_env() {
         "KOPIA_SERVER_PORT"
         "KOPIA_CONFIG_DIR"
         "KOPIA_CACHE_DIR"
+        "DOCKER_VOLUMES"
     )
 
     for var in "${required_vars[@]}"; do
         if [ -z "${!var}" ]; then
-            log "ERROR: $var is not set"
+            log "ERROR: Required variable $var is not set"
             exit 1
         fi
     done
+
+    # Validate password requirements
+    if [[ ${#KOPIA_REPO_PASSWORD} -lt 16 ]]; then
+        log "ERROR: KOPIA_REPO_PASSWORD must be at least 16 characters"
+        exit 1
+    fi
+
+    if [[ ${#KOPIA_SERVER_PASSWORD} -lt 16 ]]; then
+        log "ERROR: KOPIA_SERVER_PASSWORD must be at least 16 characters"
+        exit 1
+    fi
 
     # Validate port number
     if ! [[ "${KOPIA_SERVER_PORT}" =~ ^[0-9]+$ ]] || \
        [ "${KOPIA_SERVER_PORT}" -lt 1 ] || \
        [ "${KOPIA_SERVER_PORT}" -gt 65535 ]; then
-        log "ERROR: Invalid KOPIA_SERVER_PORT value"
+        log "ERROR: Invalid KOPIA_SERVER_PORT value (must be between 1-65535)"
         exit 1
     fi
 }
 
-# Validate JSON configuration
+# Validate volumes configuration
 validate_volumes_config() {
     log "Validating volumes configuration..."
+    
     if ! command -v jq &> /dev/null; then
         log "ERROR: jq is required but not installed"
         exit 1
     fi
 
+    # Validate JSON structure
     if ! echo "${DOCKER_VOLUMES}" | jq empty; then
-        log "ERROR: Invalid JSON in DOCKER_VOLUMES"
+        log "ERROR: Invalid JSON format in DOCKER_VOLUMES"
         exit 1
-    fi
+    }
 
-    # Check if paths exist and validate configuration
-    for path in $(echo "${DOCKER_VOLUMES}" | jq -r 'keys[]'); do
-        if [ ! -d "$path" ]; then
-            log "ERROR: Directory $path does not exist"
+    # Validate each volume configuration
+    echo "${DOCKER_VOLUMES}" | jq -r 'to_entries[]' | while read -r volume; do
+        local path=$(echo "$volume" | jq -r '.key')
+        local config=$(echo "$volume" | jq -r '.value')
+
+        # Check required fields
+        if ! echo "$config" | jq -e '.name and .tags' > /dev/null; then
+            log "ERROR: Volume $path missing required fields (name, tags)"
             exit 1
         fi
 
-        # Validate volume configuration
-        volume_config=$(echo "${DOCKER_VOLUMES}" | jq -r ".[\"$path\"]")
-        if ! echo "$volume_config" | jq -e '.name and .tags' > /dev/null; then
-            log "ERROR: Invalid configuration for path $path. Required fields: name, tags"
+        # Validate path exists
+        if [ ! -d "$path" ]; then
+            log "ERROR: Directory $path does not exist"
+            exit 1
+        }
+
+        # Validate compression if specified
+        local compression=$(echo "$config" | jq -r '.compression // "zstd-fastest"')
+        if [[ ! "$compression" =~ ^(zstd-fastest|zstd-default|zstd-max)$ ]]; then
+            log "ERROR: Invalid compression setting for $path: $compression"
             exit 1
         fi
     done
@@ -109,52 +135,56 @@ check_server() {
     exit 1
 }
 
-# Run backup
+# Run backup process
 run_backup() {
     log "Starting backup process..."
     
-    # Sort volumes by priority
-    local volumes_by_priority=$(echo "${DOCKER_VOLUMES}" | jq -r 'to_entries | sort_by(.value.priority // 999) | from_entries')
-    
-    # Create temporary compose file
     local temp_compose="docker-compose.client.generated.yml"
     cp docker/docker-compose.client.yml "${temp_compose}"
-
-    # Add volume mounts
-    echo "${volumes_by_priority}" | jq -r 'keys[]' | while read -r path; do
-        volume_config=$(echo "${volumes_by_priority}" | jq -r ".[\"$path\"]")
-        name=$(echo "${volume_config}" | jq -r '.name')
-        tags=$(echo "${volume_config}" | jq -r '.tags[]' | tr '\n' ',' | sed 's/,$//')
-        compression=$(echo "${volume_config}" | jq -r '.compression // "zstd-fastest"')
+    
+    # Sort volumes by priority and process them
+    echo "${DOCKER_VOLUMES}" | jq -r 'to_entries | sort_by(.value.priority // 999) | .[]' | \
+    while read -r volume; do
+        local path=$(echo "$volume" | jq -r '.key')
+        local config=$(echo "$volume" | jq -r '.value')
+        local name=$(echo "$config" | jq -r '.name')
+        local tags=$(echo "$config" | jq -r '.tags | join(",")')
+        local compression=$(echo "$config" | jq -r '.compression // "zstd-fastest"')
         
-        log "Configuring backup for $path ($name)"
+        log "Processing backup for $path ($name)"
+        
+        # Add volume mount to compose file
         echo "      - ${path}:${path}:ro" >> "${temp_compose}"
         
-        # Run backup
+        # Execute backup
         if ! docker-compose -f "${temp_compose}" run --rm kopia-backup \
             snapshot create "${path}" \
             --tags="${tags}" \
             --compression="${compression}" \
-            --parallel="${KOPIA_PARALLEL_CLIENT}"; then
+            --parallel="${KOPIA_PARALLEL_CLIENT:-4}"; then
             log "ERROR: Backup failed for $path"
-            rm "${temp_compose}"
-            return 1
+            cleanup_and_exit 1
         fi
 
         # Verify backup if enabled
         if [ "${BACKUP_VERIFY:-true}" = "true" ]; then
             log "Verifying backup for $path"
-            docker-compose -f "${temp_compose}" run --rm kopia-backup \
-                snapshot verify "${path}" || {
+            if ! docker-compose -f "${temp_compose}" run --rm kopia-backup \
+                snapshot verify "${path}"; then
                 log "ERROR: Verification failed for $path"
-                rm "${temp_compose}"
-                return 1
-            }
+                cleanup_and_exit 1
+            fi
         fi
     done
 
-    rm "${temp_compose}"
-    return 0
+    cleanup_and_exit 0
+}
+
+# Cleanup function
+cleanup_and_exit() {
+    local exit_code=$1
+    rm -f docker-compose.client.generated.yml
+    exit "${exit_code}"
 }
 
 # Verify backup integrity
@@ -162,10 +192,42 @@ verify_backup_integrity() {
     # Логика проверки
 }
 
+# Check system requirements
+check_system_requirements() {
+    log "Checking system requirements..."
+
+    # Check Docker
+    if ! command -v docker &> /dev/null; then
+        log "ERROR: Docker is not installed"
+        exit 1
+    fi
+
+    # Check Docker Compose
+    if ! command -v docker-compose &> /dev/null; then
+        log "ERROR: Docker Compose is not installed"
+        exit 1
+    fi
+
+    # Check available disk space
+    local required_space=5120  # 5GB in MB
+    local available_space=$(df -m "${KOPIA_CONFIG_DIR}" | awk 'NR==2 {print $4}')
+    if [ "${available_space}" -lt "${required_space}" ]; then
+        log "WARNING: Less than 5GB free space available in ${KOPIA_CONFIG_DIR}"
+    fi
+
+    # Check memory
+    local min_memory=1024  # 1GB in MB
+    local available_memory=$(free -m | awk '/^Mem:/{print $2}')
+    if [ "${available_memory}" -lt "${min_memory}" ]; then
+        log "WARNING: System has less than 1GB RAM"
+    fi
+}
+
 # Main execution
 main() {
-    log "Starting Kopia client backup..."
+    log "Starting Kopia client backup process..."
     
+    check_system_requirements
     validate_env
     setup_dirs
     validate_volumes_config
@@ -174,6 +236,9 @@ main() {
 
     log "Backup process completed successfully"
 }
+
+# Trap for cleanup
+trap 'cleanup_and_exit 1' INT TERM
 
 # Run main function
 main "$@"

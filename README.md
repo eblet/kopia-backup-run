@@ -1,268 +1,208 @@
-   KOPIA_UPLOAD_LIMIT=0         # Upload speed limit (0=unlimited)
-   KOPIA_DOWNLOAD_LIMIT=0       # Download speed limit (0=unlimited)
-   ```
+# 🚀 Kopia Backup System
 
-5. Backup Configuration:
-   ```bash
-   # Volume configuration (JSON format)
-   DOCKER_VOLUMES='{
-       "/path/to/data": {
-           "name": "app-data",
-           "tags": ["type:data", "app:myapp"],
-           "compression": "zstd-fastest",
-           "exclude": ["*.tmp", "*.log"],
-           "priority": 1
-       }
-   }'
-Kopia Backup System 🚀
+Enterprise-grade backup solution using Kopia with Docker support.
 
-   # Backup settings
-   BACKUP_COMPRESSION=zstd-fastest
-   BACKUP_VERIFY=true
-   BACKUP_RETENTION_DAYS=7
-   ```
+## 📋 System Requirements
 
-📊 Monitoring & Maintenance
--------------------------
+### Server Requirements
+- Docker Engine 20.10+
+- Docker Compose 2.0+
+- 2GB RAM minimum (4GB recommended)
+- 2 CPU cores minimum
+- 10GB free disk space
+- NFS client utilities
+- Network access to NAS
 
-1. Service Status:
-   ```bash
-   # Docker status
-   docker ps
-   docker logs kopia-server
-======================
+### Client Requirements
+- Docker Engine 20.10+
+- Docker Compose 2.0+
+- 1GB RAM minimum
+- Network access to Kopia server
 
-Enterprise-ready configuration for Kopia backup system with Docker support.
+## 🛠️ Quick Start
 
-📋 Prerequisites
----------------------
+### Server Setup
 
-1. System Requirements:
-   - 2GB RAM minimum
-   - 10GB free disk space
-   docker logs kopia-client
+1. Clone repository and configure environment:
+```bash
+git clone https://github.com/yourusername/kopia-backup
+cd kopia-backup
+cp .env.example .env
+```
 
-   # System service status
-   systemctl status kopia-server
-   systemctl status kopia-nas-sync.timer
-   ```
+2. Edit configuration:
+```bash
+nano .env
+```
 
-2. Logs:
-   ```bash
-   # View logs
-   tail -f /var/log/kopia/server.log
-   - Docker and docker-compose
-   - NFS client utilities
-   - jq for JSON processing
+3. Run server setup:
+```bash
+sudo ./scripts/kopia_server_setup.sh
+```
 
-2. NAS Requirements:
-   - NFS server enabled
-   - Network access from Kopia server
-   - Proper NFS exports configured
+### Client Setup
 
-   Example NFS exports:
-   ```bash
-   # /etc/exports
-   /volume1/backups    10.0.0.0/24(rw,sync,no_subtree_check)
-   tail -f /var/log/kopia/nas-sync.log
+1. Configure environment:
+```bash
+cp .env.example .env
+nano .env
+```
 
-   # Log locations
-   - /var/log/kopia/server.log
-   - /var/log/kopia/server-error.log
-   - /var/log/kopia/nas-sync.log
-   - /var/log/kopia/nas-sync-error.log
-   ```
+2. Run backup:
+```bash
+./scripts/kopia_client_docker_run.sh
+```
 
-3. Security Requirements:
-   - Minimum 16 characters for passwords
-   - Minimum 8 characters for username
-   - Optional TLS encryption
-   - IP-based access control
+## 📝 Configuration Guide
 
-📦 Installation
----------------------
+### Essential Settings
 
-1. 🐳 Docker Installation (Recommended)
-
-   Server Setup:
-   ```
-
-3. Backup Verification:
-   ```bash
-   # List snapshots
-   docker exec kopia-server kopia snapshot list
-
-   # Verify specific snapshot
-   docker exec kopia-server kopia snapshot verify <snapshot-id>
-   ```
-
-🔄 Recovery Operations
--------------------
-
-1. List Snapshots:
-   ```bash
-   ```bash
-   # Clone repository
-   git clone https://github.com/yourusername/kopia-backup-run   
-   cd kopia-backup-run
-
-   # Install dependencies
-   sudo apt update
-   docker exec kopia-server kopia snapshot list
-   ```
-
-2. Restore Files:
-   ```bash
-   docker exec kopia-server kopia snapshot restore \
-   sudo apt install -y docker.io docker-compose nfs-common jq
-
-   # Configure environment
-   cp .env.example .env
-   nano .env
-
-   # Create required directories
-   sudo mkdir -p /var/lib/kopia /var/log/kopia
-   sudo chmod 750 /var/lib/kopia /var/log/kopia
-
-   # Start Kopia server
-   docker-compose -f docker/docker-compose.server.yml up -d
-
-   # Verify server status
-   docker logs kopia-server
-   ```
-
-   Client Setup:
-   ```bash
-   # Configure environment
-   cp .env.example .env
-   nano .env
-
-   # Create required directories
-   mkdir -p ~/.config/kopia ~/.cache/kopia
-   sudo mkdir -p /var/log/kopia
-
-   # Start backup
-   ./scripts/kopia_client_docker_run.sh
-   ```
-
-2. 💻 Script Installation
-
-   Server Setup:
-   ```bash
-   sudo ./scripts/kopia_server_setup.sh
-   ```
-
-🔑 Configuration
----------------
-
-1. Security Settings:
-     --target=/path/to/restore \
-     <snapshot-id>
-   ```
-
-🛠️ Advanced Configuration
------------------------
-
-1. TLS Security:
-   ```bash
-   # Enable TLS
-   ```bash
-   # Required security settings
-   KOPIA_REPO_PASSWORD=          # Min 16 chars, required
-   KOPIA_SERVER_USERNAME=        # Min 8 chars, required
-   KOPIA_SERVER_PASSWORD=        # Min 16 chars, required
-   KOPIA_SECURE_MODE=false      # Enable TLS (true/false)
-   KOPIA_SERVER_ALLOWED_IPS=    # Allowed IP ranges
-   KOPIA_SECURE_MODE=true
-   ```
-
-2. NAS Mount Options:
-   ```bash
-   NAS_MOUNT_OPTIONS="rw,sync,hard,intr,rsize=32768,wsize=32768,noatime"
-   NAS_TIMEOUT=30
-   ```
-   ```
+1. Security Configuration:
+```properties
+KOPIA_REPO_PASSWORD=<strong-password>    # Min 16 characters
+KOPIA_SERVER_USERNAME=<username>         # Min 8 characters
+KOPIA_SERVER_PASSWORD=<strong-password>  # Min 16 characters
+KOPIA_SECURE_MODE=true                  # Enable TLS
+```
 
 2. Network Settings:
-   ```bash
-   KOPIA_SERVER_IP=             # Server IP address
-   KOPIA_SERVER_PORT=51515      # Server port
-   NAS_IP=                      # NAS IP address
-   NAS_SHARE=                   # NAS share path
-   ```
+```properties
+KOPIA_SERVER_IP=192.168.1.100
+KOPIA_SERVER_PORT=51515
+KOPIA_SERVER_ALLOWED_IPS=192.168.1.0/24
+```
 
 3. Storage Configuration:
+```properties
+KOPIA_BASE_DIR=/var/lib/kopia
+NAS_MOUNT_PATH=/mnt/nas
+```
 
-3. Resource Management:
-   ```bash
-   # Server limits
-   KOPIA_SERVER_CPU_LIMIT=2
-   KOPIA_SERVER_MEM_LIMIT=2G
+### Volume Configuration
 
-   # Client limits
-   KOPIA_CLIENT_CPU_LIMIT=4
-   KOPIA_CLIENT_MEM_LIMIT=4G
-   ```
-   ```bash
-   KOPIA_BASE_DIR=/var/lib/kopia     # Base directory
-   KOPIA_REPO_PATH=/var/lib/kopia/repository  # Repository path
-   KOPIA_CONFIG_DIR=~/.config/kopia  # Client config
-   KOPIA_CACHE_DIR=~/.cache/kopia   # Cache directory
+Define backup volumes in JSON format:
+```json
+DOCKER_VOLUMES='{
+    "/path/to/backup": {
+        "name": "data-backup",
+        "tags": ["prod", "data"],
+        "compression": "zstd-fastest",
+        "priority": 1
+    }
+}'
+```
 
-4. Log Rotation:
-   ```bash
-   LOG_MAX_SIZE=100M
-   LOG_MAX_FILES=7
-   ```
+### Performance Tuning
 
-⚠️ Troubleshooting
-----------------
+1. Resource Limits:
+```properties
+KOPIA_CLIENT_CPU_LIMIT=4
+KOPIA_CLIENT_MEM_LIMIT=4G
+KOPIA_PARALLEL_CLIENT=4
+```
 
-1. Connection Issues:
-   ```bash
-   # Check NFS
-   showmount -e ${NAS_IP}
-   mountpoint -q ${NAS_MOUNT_PATH}
-   KOPIA_CACHE_SIZE=5G              # Cache size limit
-   ```
+2. Cache Settings:
+```properties
+KOPIA_CACHE_SIZE=5G
+KOPIA_UPLOAD_LIMIT=0
+KOPIA_DOWNLOAD_LIMIT=0
+```
 
-4. Performance Settings:
-   ```bash
-   KOPIA_PARALLEL_CLIENT=4      # Client parallel operations
-   KOPIA_PARALLEL_SERVER=2      # Server parallel operations
+## 🔍 Monitoring
 
-   # Check server
-   curl -v ${KOPIA_SECURE_MODE:+https://}${KOPIA_SECURE_MODE:-http://}${KOPIA_SERVER_IP}:${KOPIA_SERVER_PORT}
-   ```
+### Check Service Status
+```bash
+# Server status
+docker logs kopia-server
+systemctl status kopia-server
 
-2. Permission Problems:
-   ```bash
-   ls -la ${KOPIA_BASE_DIR}
-   KOPIA_UPLOAD_LIMIT=0         # Upload speed limit (0=unlimited)
-   ls -la ${KOPIA_REPO_PATH}
-   ls -la /var/log/kopia
-   ```
+# Client logs
+docker logs kopia-client
+tail -f /var/log/kopia/client.log
+```
+
+### View Backups
+```bash
+# List snapshots
+docker exec kopia-server kopia snapshot list
+
+# Check repository
+docker exec kopia-server kopia repository status
+```
+
+## 🔄 Recovery Operations
+
+1. List Available Snapshots:
+```bash
+docker exec kopia-server kopia snapshot list
+```
+
+2. Restore Data:
+```bash
+docker exec kopia-server kopia snapshot restore \
+  --target=/path/to/restore <snapshot-id>
+```
+
+## 🛟 Troubleshooting
+
+### Common Issues
+
+1. Connection Problems:
+```bash
+# Check NAS mount
+mountpoint -q ${NAS_MOUNT_PATH}
+showmount -e ${NAS_IP}
+
+# Verify server
+curl -v http://${KOPIA_SERVER_IP}:${KOPIA_SERVER_PORT}
+```
+
+2. Permission Issues:
+```bash
+# Check permissions
+ls -la ${KOPIA_BASE_DIR}
+ls -la /var/log/kopia
+```
 
 3. Resource Issues:
-   ```bash
-   docker stats
-   df -h
-   KOPIA_DOWNLOAD_LIMIT=0       # Download speed limit (0=unlimited)
-   ```
+```bash
+# Monitor resources
+docker stats kopia-server kopia-client
+df -h
+free -m
+```
 
-5. Backup Configuration:
-   ```bash
-   # Volume configuration (JSON format)
-   DOCKER_VOLUMES='{
-       "/path/to/data": {
-           "name": "app-data",
-   free -m
-   ```
+## 🔒 Security Best Practices
 
-4. Common Errors:
-   - "Repository not initialized": Check KOPIA_REPO_PASSWORD
-   - "Cannot connect to server": Check network and KOPIA_SERVER_IP
-   - "NFS mount failed": Verify NAS connectivity
-           "tags": ["type:data", "app:myapp"],
-   - "Permission denied": Check directory permissions
-   - "Invalid JSON": Validate DOCKER_VOLUMES format
+1. Enable TLS:
+```properties
+KOPIA_SECURE_MODE=true
+```
+
+2. Set Strong Passwords:
+- Use minimum 16 characters
+- Include special characters
+- Avoid common patterns
+
+3. Restrict Access:
+```properties
+KOPIA_SERVER_ALLOWED_IPS=10.0.0.0/24,192.168.1.0/24
+```
+
+## 📚 Additional Resources
+
+- [Kopia Documentation](https://kopia.io/docs/)
+- [Docker Documentation](https://docs.docker.com/)
+- [NFS Setup Guide](https://help.ubuntu.com/community/NFSv4Howto)
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch
+3. Commit changes
+4. Push to branch
+5. Create Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

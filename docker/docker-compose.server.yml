@@ -5,12 +5,13 @@ services:
     image: kopia/kopia:latest
     container_name: kopia-server
     volumes:
-      - ${KOPIA_BASE_DIR}:${KOPIA_BASE_DIR}
-      - ${NAS_MOUNT_PATH}:${NAS_MOUNT_PATH}
-      - /var/log/kopia:/var/log/kopia
+      - ${KOPIA_BASE_DIR}:${KOPIA_BASE_DIR}:rw
+      - ${NAS_MOUNT_PATH}:${NAS_MOUNT_PATH}:rw
+      - /var/log/kopia:/var/log/kopia:rw
+      - ${KOPIA_CACHE_DIR:-/var/cache/kopia}:/app/cache:rw
     environment:
       - KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD}
-      - TZ=UTC
+      - TZ=${TZ:-UTC}
     command: >
       server start
       --address 0.0.0.0:${KOPIA_SERVER_PORT}
@@ -19,9 +20,9 @@ services:
       ${KOPIA_SECURE_MODE:+--tls-generate-cert}
       ${KOPIA_SECURE_MODE:-"--insecure"}
       ${KOPIA_SERVER_ALLOWED_IPS:+--server-control-access=${KOPIA_SERVER_ALLOWED_IPS}}
-      --server-cache-directory=${KOPIA_CACHE_DIR}
-      --max-upload-speed=${KOPIA_UPLOAD_LIMIT}
-      --max-download-speed=${KOPIA_DOWNLOAD_LIMIT}
+      --server-cache-directory=/app/cache
+      --max-upload-speed=${KOPIA_UPLOAD_LIMIT:-0}
+      --max-download-speed=${KOPIA_DOWNLOAD_LIMIT:-0}
     ports:
       - "${KOPIA_SERVER_PORT}:${KOPIA_SERVER_PORT}"
     networks:
@@ -30,51 +31,20 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '${KOPIA_SERVER_CPU_LIMIT}'
-          memory: ${KOPIA_SERVER_MEM_LIMIT}
+          cpus: '${KOPIA_SERVER_CPU_LIMIT:-2}'
+          memory: ${KOPIA_SERVER_MEM_LIMIT:-2G}
     healthcheck:
       test: ["CMD", "kopia", "repository", "status"]
       interval: 5m
       timeout: 10s
       retries: 3
+      start_period: 30s
     logging:
       driver: "json-file"
       options:
-        max-size: "${LOG_MAX_SIZE}"
-        max-file: "${LOG_MAX_FILES}"
-    labels:
-      - "prometheus.enable=true"
+        max-size: "${LOG_MAX_SIZE:-100M}"
+        max-file: "${LOG_MAX_FILES:-7}"
 
-  kopia-nas-sync:
-    image: kopia/kopia:latest
-    container_name: kopia-nas-sync
-    volumes:
-      - ${KOPIA_BASE_DIR}:${KOPIA_BASE_DIR}
-      - ${NAS_MOUNT_PATH}:${NAS_MOUNT_PATH}
-      - /var/log/kopia:/var/log/kopia
-    environment:
-      - KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD}
-      - TZ=UTC
-    command: >
-      snapshot create ${KOPIA_REPO_PATH}
-      --target-path=${NAS_MOUNT_PATH}/kopia-repo
-      --compression=zstd-max
-      --parallel=${KOPIA_PARALLEL_SERVER}
-      --check-integrity=${BACKUP_VERIFY}
-      --max-upload-speed=${KOPIA_UPLOAD_LIMIT}
-      --max-download-speed=${KOPIA_DOWNLOAD_LIMIT}
-    networks:
-      - kopia_network
-    restart: "no"
-    deploy:
-      resources:
-        limits:
-          cpus: '${KOPIA_SERVER_CPU_LIMIT}'
-          memory: ${KOPIA_SERVER_MEM_LIMIT}
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "${LOG_MAX_SIZE}"
-        max-file: "${LOG_MAX_FILES}"
-    depends_on:
-      - kopia-server 
+networks:
+  kopia_network:
+    driver: bridge

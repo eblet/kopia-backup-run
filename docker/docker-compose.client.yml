@@ -5,13 +5,13 @@ services:
     image: kopia/kopia:latest
     container_name: kopia-client
     volumes:
-      - ${KOPIA_CONFIG_DIR}:/app/config
-      - ${KOPIA_CACHE_DIR}:/app/cache
-      - /var/log/kopia:/var/log/kopia
+      - ${KOPIA_CONFIG_DIR}:/app/config:rw
+      - ${KOPIA_CACHE_DIR}:/app/cache:rw
+      - /var/log/kopia:/var/log/kopia:rw
       # Volumes will be added dynamically by the script
     environment:
       - KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD}
-      - TZ=UTC
+      - TZ=${TZ:-UTC}
     command: >
       repository connect server
       --url=${KOPIA_SECURE_MODE:+https://}${KOPIA_SECURE_MODE:-http://}${KOPIA_SERVER_IP}:${KOPIA_SERVER_PORT}
@@ -28,15 +28,16 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '${KOPIA_CLIENT_CPU_LIMIT}'
-          memory: ${KOPIA_CLIENT_MEM_LIMIT}
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "${LOG_MAX_SIZE}"
-        max-file: "${LOG_MAX_FILES}"
+          cpus: '${KOPIA_CLIENT_CPU_LIMIT:-4}'
+          memory: ${KOPIA_CLIENT_MEM_LIMIT:-4G}
     healthcheck:
       test: ["CMD", "kopia", "repository", "status"]
       interval: 1m
       timeout: 10s
-      retries: 3 
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "${LOG_MAX_SIZE:-100M}"
+        max-file: "${LOG_MAX_FILES:-7}"
