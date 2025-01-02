@@ -1,9 +1,9 @@
 # 🚀 Kopia Backup System + Monitoring Stack
 
 ## 📋 Overview
-Enterprise-grade backup solution with comprehensive monitoring:
-- 🔄 Centralized backup management
-- 📊 Multi-level monitoring
+Modular backup solution with optional monitoring:
+- 🔄 Core: Kopia Server & Client
+- 📊 Optional: Monitoring Stack
 - 🔐 Secure and scalable
 - 🚀 Easy deployment
 
@@ -59,29 +59,28 @@ graph TB
 
 ## 🚀 Quick Start
 
-### 1. Prerequisites
+### 1. Core Setup (Required)
+
+#### Prerequisites
 ```bash
-# System requirements
+# Minimum requirements
 - Docker Engine 20.10+
 - Docker Compose 2.0+
-- 4GB RAM (minimum)
-- 2 CPU cores (minimum)
+- 2GB RAM
+- 1 CPU core
 ```
 
-### 2. Installation
+#### Basic Installation
 ```bash
 # Clone repository
 git clone https://github.com/yourusername/kopia-backup-system
 cd kopia-backup-system
 
-# Configure environment
-cp .env.example .env
-vim .env  # Edit configuration
-```
+# Configure core settings
+cp .env.example .env.core
+vim .env.core  # Edit only core settings
 
-### 3. Deploy Kopia Server
-```bash
-# Start Kopia server
+# Deploy Kopia server
 ./scripts/setup.sh
 docker-compose -f docker/docker-compose.server.yml up -d
 
@@ -89,7 +88,10 @@ docker-compose -f docker/docker-compose.server.yml up -d
 docker logs kopia-server
 ```
 
-### 4. Setup Monitoring
+### 2. Monitoring Setup (Optional)
+
+If you want to add monitoring later:
+
 ```bash
 # Deploy monitoring stack
 ./scripts/setup_monitoring.sh
@@ -98,6 +100,16 @@ docker logs kopia-server
 - Grafana: http://localhost:3000
 - Prometheus: http://localhost:9090
 ```
+
+## 🔧 Core Configuration
+
+### Minimal Required Variables
+| Variable | Description | Required |
+|----------|-------------|----------|
+| KOPIA_REPO_PASSWORD | Repository encryption | ✅ |
+| KOPIA_SERVER_USERNAME | Admin username | ✅ |
+| KOPIA_SERVER_PASSWORD | Admin password | ✅ |
+| KOPIA_SERVER_IP | Server address | ✅ |
 
 ## 🔧 Configuration
 
