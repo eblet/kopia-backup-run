@@ -16,11 +16,11 @@ graph TB
     subgraph "Backup Infrastructure"
         C[Kopia Client] -->|Backup| S[Kopia Server]
         S -->|Store| R[(Repository)]
-        S -->|Sync| N[(NAS Storage)]
+        R -->|Sync| N[(NAS Storage)]
         
         subgraph "Automation"
             T1[Backup Timer] -->|Trigger| C
-            T2[Sync Timer] -->|Trigger| S
+            T2[Sync Timer] -->|Trigger| R
             T3[Cleanup Timer] -->|Maintain| R
         end
     end
