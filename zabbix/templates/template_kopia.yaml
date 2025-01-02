@@ -1,0 +1,218 @@
+zabbix_export:
+  version: '6.0'
+  date: '2024-01-15T12:00:00Z'
+  templates:
+    - name: 'Template Kopia Backup'
+      templates: []
+      groups:
+        - name: Templates/Backup
+      items:
+        # NAS Monitoring
+        - name: 'NAS connection status'
+          key: 'kopia.nas.status'
+          type: ZABBIX_ACTIVE
+          value_type: NUMERIC
+          description: 'Check NAS connectivity status'
+          delay: 5m
+          history: 7d
+          valuemap:
+            name: 'NAS Status'
+            mappings:
+              - value: '0'
+                newvalue: 'Unreachable'
+              - value: '1'
+                newvalue: 'Share Unavailable'
+              - value: '2'
+                newvalue: 'Not Mounted'
+              - value: '3'
+                newvalue: 'Read-Only/Permission Issue'
+              - value: '4'
+                newvalue: 'OK'
+          triggers:
+            - expression: 'last(/Template Kopia Backup/kopia.nas.status)=0'
+              name: 'Kopia: NAS is unreachable'
+              priority: HIGH
+              description: 'Cannot reach NAS server'
+            - expression: 'last(/Template Kopia Backup/kopia.nas.status)=1'
+              name: 'Kopia: NAS share unavailable'
+              priority: HIGH
+              description: 'NAS share is not accessible'
+            - expression: 'last(/Template Kopia Backup/kopia.nas.status)=2'
+              name: 'Kopia: NAS not mounted'
+              priority: HIGH
+              description: 'NAS share is not mounted'
+            - expression: 'last(/Template Kopia Backup/kopia.nas.status)=3'
+              name: 'Kopia: NAS mount issues'
+              priority: WARNING
+              description: 'NAS mount is read-only or has permission issues'
+
+        # Backup Monitoring
+        - name: 'Backup status'
+          key: 'kopia.backup.status'
+          type: ZABBIX_ACTIVE
+          value_type: TEXT
+          description: 'Kopia backup status information'
+          delay: 5m
+          history: 7d
+          
+        - name: 'Backup age (hours)'
+          key: 'kopia.backup.age'
+          type: ZABBIX_ACTIVE
+          value_type: NUMERIC
+          units: 'h'
+          description: 'Age of latest backup in hours'
+          delay: 5m
+          history: 7d
+          triggers:
+            - expression: 'last(/Template Kopia Backup/kopia.backup.age)>{$BACKUP_MAX_AGE}'
+              name: 'Kopia: Backup too old'
+              priority: WARNING
+              description: 'Latest backup is older than {$BACKUP_MAX_AGE} hours'
+
+        - name: 'Backup validation status'
+          key: 'kopia.backup.validation'
+          type: ZABBIX_ACTIVE
+          value_type: NUMERIC
+          description: 'Status of backup validation'
+          delay: 1h
+          history: 7d
+          valuemap:
+            name: 'Boolean Status'
+            mappings:
+              - value: '0'
+                newvalue: 'Failed'
+              - value: '1'
+                newvalue: 'Success'
+          triggers:
+            - expression: 'last(/Template Kopia Backup/kopia.backup.validation)=0'
+              name: 'Kopia: Backup validation failed'
+              priority: HIGH
+              description: 'Last backup validation failed'
+
+        - name: 'Backup size'
+          key: 'kopia.backup.size'
+          type: ZABBIX_ACTIVE
+          value_type: NUMERIC
+          units: 'B'
+          description: 'Total size of latest backup'
+          delay: 1h
+          history: 7d
+          preprocessing:
+            - type: CHANGE_PER_SECOND
+              parameters:
+                - ''
+          triggers:
+            - expression: 'last(/Template Kopia Backup/kopia.backup.size)=0'
+              name: 'Kopia: Backup size is 0'
+              priority: WARNING
+              description: 'Latest backup has zero size'
+
+        - name: 'Backup files count'
+          key: 'kopia.backup.files'
+          type: ZABBIX_ACTIVE
+          value_type: NUMERIC
+          description: 'Number of files in latest backup'
+          delay: 1h
+          history: 7d
+
+        # Repository Monitoring
+        - name: 'Repository status'
+          key: 'kopia.repo.status'
+          type: ZABBIX_ACTIVE
+          value_type: TEXT
+          description: 'Kopia repository status information'
+          delay: 5m
+          history: 7d
+
+        - name: 'Repository size'
+          key: 'kopia.repo.size'
+          type: ZABBIX_ACTIVE
+          value_type: NUMERIC
+          units: 'B'
+          description: 'Total repository size'
+          delay: 1h
+          history: 7d
+
+        - name: 'Repository available space'
+          key: 'kopia.repo.space'
+          type: ZABBIX_ACTIVE
+          value_type: NUMERIC
+          units: 'B'
+          description: 'Available space in repository'
+          delay: 1h
+          history: 7d
+          triggers:
+            - expression: '100*last(/Template Kopia Backup/kopia.repo.size)/last(/Template Kopia Backup/kopia.repo.space)>{$REPO_SPACE_CRIT}'
+              name: 'Kopia: Repository space critical'
+              priority: HIGH
+              description: 'Repository space usage is above {$REPO_SPACE_CRIT}%'
+            - expression: '100*last(/Template Kopia Backup/kopia.repo.size)/last(/Template Kopia Backup/kopia.repo.space)>{$REPO_SPACE_WARN}'
+              name: 'Kopia: Repository space warning'
+              priority: WARNING
+              description: 'Repository space usage is above {$REPO_SPACE_WARN}%'
+
+        - name: 'Repository integrity'
+          key: 'kopia.repo.integrity'
+          type: ZABBIX_ACTIVE
+          value_type: NUMERIC
+          description: 'Repository integrity check status'
+          delay: 1d
+          history: 7d
+          valuemap:
+            name: 'Boolean Status'
+            mappings:
+              - value: '0'
+                newvalue: 'Failed'
+              - value: '1'
+                newvalue: 'Success'
+          triggers:
+            - expression: 'last(/Template Kopia Backup/kopia.repo.integrity)=0'
+              name: 'Kopia: Repository integrity check failed'
+              priority: HIGH
+              description: 'Repository integrity check failed'
+
+      macros:
+        - macro: '{$BACKUP_MAX_AGE}'
+          value: '24'
+          description: 'Maximum backup age in hours'
+        - macro: '{$REPO_SPACE_WARN}'
+          value: '80'
+          description: 'Repository space warning threshold (%)'
+        - macro: '{$REPO_SPACE_CRIT}'
+          value: '90'
+          description: 'Repository space critical threshold (%)'
+
+      dashboards:
+        - name: 'Kopia Backup Overview'
+          pages:
+            - name: 'Main'
+              widgets:
+                - type: GRAPH_CLASSIC
+                  name: 'Backup Size History'
+                  x: '0'
+                  y: '0'
+                  width: '12'
+                  height: '5'
+                  graph_items:
+                    - item:
+                        host: 'Template Kopia Backup'
+                        key: 'kopia.backup.size'
+                - type: GRAPH_CLASSIC
+                  name: 'Repository Space Usage'
+                  x: '0'
+                  y: '5'
+                  width: '12'
+                  height: '5'
+                  graph_items:
+                    - item:
+                        host: 'Template Kopia Backup'
+                        key: 'kopia.repo.size'
+                    - item:
+                        host: 'Template Kopia Backup'
+                        key: 'kopia.repo.space'
+
+      tags:
+        - tag: Application
+          value: Backup
+        - tag: Component
+          value: Kopia 
