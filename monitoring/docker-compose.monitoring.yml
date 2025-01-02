@@ -1,5 +1,14 @@
 version: '3.8'
 
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "${LOG_MAX_SIZE:-100M}"
+    max-file: "${LOG_MAX_FILES:-7}"
+
+x-labels: &monitoring-labels
+  com.kopia.type: monitoring
+
 services:
   prometheus:
     image: prom/prometheus:${PROMETHEUS_VERSION:-latest}
@@ -21,14 +30,10 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "${LOG_MAX_SIZE:-100M}"
-        max-file: "${LOG_MAX_FILES:-7}"
+    logging: *default-logging
     labels:
-      - "com.kopia.type=monitoring"
-      - "com.kopia.component=prometheus"
+      <<: *monitoring-labels
+      com.kopia.component: prometheus
 
   grafana:
     image: grafana/grafana:${GRAFANA_VERSION:-latest}
@@ -49,14 +54,10 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "${LOG_MAX_SIZE:-100M}"
-        max-file: "${LOG_MAX_FILES:-7}"
+    logging: *default-logging
     labels:
-      - "com.kopia.type=monitoring"
-      - "com.kopia.component=grafana"
+      <<: *monitoring-labels
+      com.kopia.component: grafana
 
   kopia-exporter:
     build: 
@@ -75,14 +76,10 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "${LOG_MAX_SIZE:-100M}"
-        max-file: "${LOG_MAX_FILES:-7}"
+    logging: *default-logging
     labels:
-      - "com.kopia.type=monitoring"
-      - "com.kopia.component=exporter"
+      <<: *monitoring-labels
+      com.kopia.component: exporter
 
   node-exporter:
     image: prom/node-exporter:${NODE_EXPORTER_VERSION:-latest}
@@ -103,14 +100,10 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "${LOG_MAX_SIZE:-100M}"
-        max-file: "${LOG_MAX_FILES:-7}"
+    logging: *default-logging
     labels:
-      - "com.kopia.type=monitoring"
-      - "com.kopia.component=node-exporter"
+      <<: *monitoring-labels
+      com.kopia.component: node-exporter
 
 networks:
   monitoring_network:
@@ -119,3 +112,9 @@ networks:
   kopia_network:
     external: true
     name: ${KOPIA_NETWORK_NAME:-kopia_network} 
+
+healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:9090/-/healthy"]
+  interval: 30s
+  timeout: 10s
+  retries: 3 

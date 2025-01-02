@@ -1,6 +1,13 @@
 zabbix_export:
   version: '6.0'
   date: '2024-01-15T12:00:00Z'
+  valuemaps:
+    - name: 'Boolean Status'
+      mappings:
+        - value: '0'
+          newvalue: 'Failed'
+        - value: '1'
+          newvalue: 'Success'
   templates:
     - name: 'Template Kopia Backup'
       templates: []

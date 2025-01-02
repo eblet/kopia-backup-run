@@ -31,6 +31,20 @@ setup_zabbix() {
     (cd monitoring/zabbix && ./setup.sh)
 }
 
+# Check disk space
+MIN_SPACE=1000000  # 1GB
+available=$(df -k "${PROMETHEUS_DATA_DIR:-/var/lib/prometheus}" | awk 'NR==2 {print $4}')
+if [ "$available" -lt "$MIN_SPACE" ]; then
+    echo "ERROR: Insufficient disk space"
+    exit 1
+fi
+
+# Check if Kopia is running
+if ! docker ps | grep -q kopia-server; then
+    echo "ERROR: Kopia server is not running"
+    exit 1
+fi
+
 # Main setup
 case "${MONITORING_TYPE:-all}" in
     "all")

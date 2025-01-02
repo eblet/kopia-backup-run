@@ -20,7 +20,6 @@ get_recent_backups() {
         return
     }
     
-    # Get last 10 snapshots with key details
     echo "$result" | jq -r '
         [.[] | select(.type=="snapshot")] |
         sort_by(.startTime) |
@@ -45,7 +44,6 @@ check_backup() {
         exit 0
     }
 
-    # Get latest snapshot info
     local latest
     latest=$(echo "$result" | jq -r '[.[] | select(.type=="snapshot")] | sort_by(.startTime) | last // empty')
     
@@ -54,13 +52,11 @@ check_backup() {
         exit 0
     }
 
-    # Check snapshot age
     local start_time
     start_time=$(echo "$latest" | jq -r '.startTime')
     local age_hours
     age_hours=$(( ($(date +%s) - $(date -d "$start_time" +%s)) / 3600 ))
 
-    # Check validation status
     local validation_status
     validation_status=$(docker exec "${KOPIA_CONTAINER_NAME}" kopia snapshot verify \
         "$(echo "$latest" | jq -r '.id')" --json 2>/dev/null) || {
@@ -68,7 +64,6 @@ check_backup() {
         exit 0
     }
 
-    # Prepare response
     echo "{
         \"status\": \"ok\",
         \"latest_backup\": \"$start_time\",

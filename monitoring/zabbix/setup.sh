@@ -12,6 +12,10 @@ if [ ! -f "${ENV_FILE}" ]; then
 fi
 source "${ENV_FILE}"
 
+# Check Docker networks
+docker network inspect kopia_network >/dev/null 2>&1 || \
+    docker network create kopia_network
+
 # Check requirements
 command -v jq >/dev/null 2>&1 || { echo "ERROR: jq is required"; exit 1; }
 command -v docker >/dev/null 2>&1 || { echo "ERROR: docker is required"; exit 1; }

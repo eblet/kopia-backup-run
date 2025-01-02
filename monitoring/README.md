@@ -11,23 +11,61 @@ Comprehensive monitoring solution for Kopia Backup System including:
 ```mermaid
 graph TB
     subgraph "Monitoring Stack"
-        P[Prometheus] -->|Store| PD[(Prometheus DB)]
-        G[Grafana] -->|Query| P
-        Z[Zabbix] -->|Alert| A[Alerts]
+        subgraph "Metrics Collection"
+            P[Prometheus]
+            G[Grafana]
+            Z[Zabbix]
+        end
+        
+        subgraph "Storage"
+            PD[(Prometheus DB)]
+            GD[(Grafana DB)]
+            ZD[(Zabbix DB)]
+        end
         
         subgraph "Exporters"
             KE[Kopia Exporter]
             NE[Node Exporter]
         end
         
-        KE -->|Metrics| P
-        NE -->|Metrics| P
+        subgraph "Alerting"
+            GA[Grafana Alerts]
+            ZA[Zabbix Alerts]
+        end
     end
 
     subgraph "Kopia Stack"
-        K[Kopia Server] -->|Status| KE
-        K -->|Status| Z
+        KS[Kopia Server]
+        KC[Kopia Client]
+        R[(Repository)]
     end
+
+    %% Metrics Flow
+    KE -->|Metrics| P
+    NE -->|System Metrics| P
+    KS -->|Status| KE
+    P -->|Store| PD
+    
+    %% Visualization
+    P -->|Data Source| G
+    G -->|Store| GD
+    G -->|Alert| GA
+    
+    %% Zabbix Flow
+    KS -->|Status| Z
+    Z -->|Store| ZD
+    Z -->|Alert| ZA
+    
+    %% Kopia Flow
+    KC -->|Backup| KS
+    KS -->|Store| R
+
+    style P fill:#f9f,stroke:#333
+    style G fill:#bbf,stroke:#333
+    style Z fill:#bfb,stroke:#333
+    style KE fill:#fbb,stroke:#333
+    style NE fill:#fbb,stroke:#333
+    style KS fill:#ddf,stroke:#333
 ```
 
 ## Quick Start
