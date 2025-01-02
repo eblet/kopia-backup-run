@@ -103,16 +103,6 @@ If you want to add monitoring later:
 
 ## 🔧 Core Configuration
 
-### Minimal Required Variables
-| Variable | Description | Required |
-|----------|-------------|----------|
-| KOPIA_REPO_PASSWORD | Repository encryption | ✅ |
-| KOPIA_SERVER_USERNAME | Admin username | ✅ |
-| KOPIA_SERVER_PASSWORD | Admin password | ✅ |
-| KOPIA_SERVER_IP | Server address | ✅ |
-
-## 🔧 Configuration
-
 ### Required Environment Variables
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
