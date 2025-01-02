@@ -73,7 +73,7 @@ graph TB
 #### Basic Installation
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/kopia-backup-run
+git clone https://github.com/eblet/kopia-backup-run
 cd kopia-backup-run
 
 # Configure core settings
