@@ -73,8 +73,8 @@ graph TB
 #### Basic Installation
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/kopia-backup-system
-cd kopia-backup-system
+git clone https://github.com/yourusername/kopia-backup-run
+cd kopia-backup-run
 
 # Configure core settings
 cp .env.example .env
