@@ -153,6 +153,9 @@ crontab -e
 If you want to add monitoring later:
 
 ```bash
+# Edit .env
+nano .env
+
 # Deploy monitoring stack
 ./scripts/setup_monitoring.sh
 
@@ -239,9 +242,7 @@ docker logs kopia-exporter
 | BACKUP_VERIFY | Verify after backup | ❌ | true |
 
 ## 📚 Documentation
-- [Detailed Configuration](docs/configuration.md)
 - [Monitoring Guide](monitoring/README.md)
-- [Security Guide](docs/security.md)
 
 ## 🤝 Contributing
 1. Fork repository
