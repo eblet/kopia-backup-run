@@ -1,10 +1,16 @@
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
+  scrape_timeout: 10s
 
-# Basic auth configuration
-basic_auth_users:
-  ${PROMETHEUS_AUTH_USER}: ${PROMETHEUS_AUTH_PASSWORD}
+rule_files:
+  - "rules/kopia_alerts.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093  # Раскомментируйте если используете Alertmanager
 
 scrape_configs:
   - job_name: 'kopia'
