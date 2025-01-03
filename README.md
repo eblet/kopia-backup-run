@@ -56,8 +56,8 @@ graph TB
 #### Server Installation
 ```bash
 # Clone repository
-git clone https://github.com/eblet/kopia-backup-run
-cd kopia-backup-run
+git clone https://github.com/eblet/kopia-backup-stack
+cd kopia-backup-stack
 
 # Configure server settings
 cp .env.example .env
@@ -106,8 +106,8 @@ docker exec kopia-server kopia repository status
 #### Client Configuration
 ```bash
 # Clone repository on client machine
-git clone https://github.com/eblet/kopia-backup-run
-cd kopia-backup-run
+git clone https://github.com/eblet/kopia-backup-stack
+cd kopia-backup-stack
 
 # Configure client settings
 cp .env.example .env
@@ -139,7 +139,7 @@ DOCKER_VOLUMES='{
 #### Run Client Backup
 ```bash
 # Manual backup
-cd /path/to/kopia-backup-run
+cd /path/to/kopia-backup-stack
 # Using script (recommended)
 sudo ./scripts/setup_client.sh
 # OR using docker-compose directly
@@ -150,10 +150,10 @@ sudo crontab -e
 
 # Add schedule (example: daily at 2 AM)
 # Using script (recommended):
-0 2 * * * cd /path/to/kopia-backup-run && ./scripts/setup_client.sh
+0 2 * * * cd /path/to/kopia-backup-stack && ./scripts/kopia_client_docker_run.sh
 
 # OR using docker-compose:
-0 2 * * * cd /path/to/kopia-backup-run && docker-compose -f docker/docker-compose.client.yml up -d
+0 2 * * * cd /path/to/kopia-backup-stack && docker-compose -f docker/docker-compose.client.yml up -d
 ```
 
 #### Verify Backup
