@@ -352,29 +352,25 @@ determine_monitoring_profile() {
     # Determine required profile based on combination
     case "${grafana_mode}:${zabbix_mode}" in
         "none:none")
-            profile="metrics-only"
+            profile="base-metrics"
             ;;
         "local:none")
-            profile="with-local-grafana"
+            profile="grafana-local"
             ;;
         "none:local")
-            profile="with-local-zabbix"
+            profile="zabbix-local"
             ;;
         "local:local")
-            profile="full-local"
+            profile="full-stack"
             ;;
-        "external:external"|"external:local"|"local:external")
-            # If at least one service is external, use special profiles
-            if [ "$grafana_mode" = "external" ]; then
-                profile="metrics-only"  # Only Prometheus and exporters
-            else
-                profile="with-local-grafana"
-            fi
-            if [ "$zabbix_mode" = "local" ]; then
-                profile="${profile},with-local-zabbix"
-            elif [ "$zabbix_mode" = "external" ]; then
-                profile="${profile},with-external-zabbix"
-            fi
+        "external:external")
+            profile="grafana-zabbix-external"
+            ;;
+        "external:local")
+            profile="grafana-external,zabbix-local"
+            ;;
+        "local:external")
+            profile="grafana-local,zabbix-external"
             ;;
         *)
             log "ERROR" "Invalid monitoring configuration"

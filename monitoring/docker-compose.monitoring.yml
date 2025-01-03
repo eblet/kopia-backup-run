@@ -25,6 +25,7 @@ services:
       - grafana-external
       - zabbix-local
       - zabbix-external
+      - grafana-zabbix-external
       - full-stack
     user: "${PROM_USER:-65534}:${PROM_GROUP:-65534}"
     volumes:
@@ -129,6 +130,7 @@ services:
       - grafana-external
       - zabbix-local
       - zabbix-external
+      - grafana-zabbix-external
       - full-stack
     environment:
       - KOPIA_CONTAINER_NAME=${KOPIA_CONTAINER_NAME:-kopia-server}
@@ -159,6 +161,7 @@ services:
       - grafana-external
       - zabbix-local
       - zabbix-external
+      - grafana-zabbix-external
       - full-stack
     volumes:
       - /proc:/host/proc:ro
@@ -187,6 +190,7 @@ services:
     profiles:
       - zabbix-local
       - zabbix-external
+      - grafana-zabbix-external
       - full-stack
     environment:
       - ZBX_SERVER_HOST=${ZABBIX_SERVER_HOST}
