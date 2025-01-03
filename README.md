@@ -170,23 +170,65 @@ docker exec kopia-client kopia snapshot verify latest
 
 ### 3. Monitoring Setup (Optional)
 
-#### Deploy Monitoring Stack
+#### Available Monitoring Profiles
+Choose the appropriate monitoring profile based on your needs:
 
-If you want to add monitoring later:
-
+1. Base Metrics (Minimal)
 ```bash
-# Edit .env
-nano .env
+MONITORING_PROFILE=base-metrics
+# Deploys:
+- Prometheus
+- Kopia Exporter
+- Node Exporter
+```
 
-# Deploy monitoring stack
+2. Local Grafana
+```bash
+MONITORING_PROFILE=grafana-local
+# Adds to base metrics:
+- Local Grafana instance
+- Pre-configured dashboards
+```
+2.1. External Grafana
+```bash
+MONITORING_PROFILE=grafana-external
+GRAFANA_ENABLED=true
+GRAFANA_EXTERNAL=true
+GRAFANA_URL=http://your-grafana:3000
+GRAFANA_API_KEY=your-api-key
+```
+
+3. Local Zabbix
+```bash
+MONITORING_PROFILE=zabbix-local
+# Adds to base metrics:
+- Local Zabbix server
+- Zabbix agent
+- Monitoring templates
+```
+
+3.1. External Zabbix
+```bash
+MONITORING_PROFILE=zabbix-external
+ZABBIX_ENABLED=true
+ZABBIX_EXTERNAL=true
+ZABBIX_URL=http://your-zabbix/api_jsonrpc.php
+ZABBIX_SERVER_HOST=your-zabbix
+```
+
+4. Full Stack
+```bash
+MONITORING_PROFILE=full-stack
+# Deploys all components locally:
+- Prometheus + Exporters
+- Local Grafana
+- Local Zabbix
+```
+
+5. Deploy monitoring stack
 sudo ./scripts/setup_monitoring.sh
 or
 docker-compose -f monitoring/docker-compose.monitoring.yml up -d
-
-# Access dashboards
-- Grafana: http://localhost:3000
-- Prometheus: http://localhost:9090
-```
 
 ## 🔧 Monitoring Options
 
@@ -212,6 +254,11 @@ MONITORING_TYPE=all  # all, zabbix, prometheus, none
 - 💾 Repository status
 - 🔄 Sync status
 - 📊 System resources
+
+# Access dashboards
+- Grafana: http://localhost:3000
+- Prometheus: http://localhost:9090
+- Zabbix: http://localhost:9090
 
 ## 🛠 Troubleshooting
 

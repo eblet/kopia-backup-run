@@ -285,6 +285,73 @@ curl -s -H "Content-Type: application/json" \
 | kopia_compression_ratio | Gauge | Data compression | path |
 | kopia_deduplication_ratio | Gauge | Storage efficiency | - |
 
+## 🎯 Monitoring Profiles
+
+### Profile Selection Guide
+Choose the appropriate profile based on your needs:
+
+#### 1. base-metrics
+- Minimal metrics collection
+- Prometheus + Exporters
+- Best for: Basic monitoring needs
+```bash
+MONITORING_PROFILE=base-metrics
+```
+
+#### 2. grafana-local
+- Local Grafana installation
+- Full metrics collection
+- Best for: Single server setups
+```bash
+MONITORING_PROFILE=grafana-local
+```
+
+#### 3. grafana-external
+- Use existing Grafana instance
+- Metrics collection
+- Best for: Enterprise environments
+```bash
+MONITORING_PROFILE=grafana-external
+GRAFANA_URL=http://grafana:3000
+GRAFANA_API_KEY=your-key
+```
+
+#### 4. zabbix-local
+- Local Zabbix server
+- Full metrics collection
+- Best for: Standalone monitoring
+```bash
+MONITORING_PROFILE=zabbix-local
+```
+
+#### 5. zabbix-external
+- Use existing Zabbix server
+- Agent deployment
+- Best for: Enterprise monitoring
+```bash
+MONITORING_PROFILE=zabbix-external
+ZABBIX_SERVER_HOST=zabbix.local
+```
+
+#### 6. full-stack
+- Complete local installation
+- All components
+- Best for: Full monitoring solution
+```bash
+MONITORING_PROFILE=full-stack
+```
+
+### Profile Components Matrix
+| Component | base-metrics | grafana-local | grafana-external | zabbix-local | zabbix-external | full-stack |
+|-----------|--------------|---------------|------------------|--------------|-----------------|------------|
+| Prometheus | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Kopia Exporter | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Node Exporter | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Local Grafana | ❌ | ✅ | ❌ | ❌ | ❌ | ✅ |
+| External Grafana | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Local Zabbix | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
+| Zabbix Agent | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+
 ## 🔔 Alert Rules
 
 ### Critical Alerts
