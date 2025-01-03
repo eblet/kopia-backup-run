@@ -170,6 +170,23 @@ docker exec kopia-client kopia snapshot verify latest
 
 ### 3. Monitoring Setup (Optional)
 
+### Client Monitoring Setup
+
+#### Enable Client Monitoring
+```bash
+# Edit .env file
+MONITORING_PROFILE=base-metrics # base-metrics, zabbix-local, zabbix-external, grafana-local, grafana-external, grafana-zabbix-external, full-stack
+ZABBIX_AGENT_ENABLED=true       # Enable Zabbix agent
+ZABBIX_CLIENT_ENABLED=true      # Enable client monitoring
+ZABBIX_SERVER_HOST=zabbix.local # Zabbix server hostname
+KOPIA_CLIENT_HOSTNAME=myapp-01   # Custom hostname (optional)
+
+# Deploy only Zabbix agent on client machine
+./scripts/setup_client.sh
+# OR
+docker compose -f docker/docker-compose.zabbix_agent.yml up -d
+```
+
 #### Available Monitoring Profiles
 Choose the appropriate monitoring profile based on your needs:
 
@@ -282,22 +299,6 @@ MONITORING_TYPE=all  # all, zabbix, prometheus, none
 - Grafana: http://localhost:3000
 - Prometheus: http://localhost:9090
 - Zabbix: http://localhost:9090
-
-### Client Monitoring Setup
-
-#### Enable Client Monitoring
-```bash
-# Edit .env file
-ZABBIX_AGENT_ENABLED=true       # Enable Zabbix agent
-ZABBIX_CLIENT_ENABLED=true      # Enable client monitoring
-ZABBIX_SERVER_HOST=zabbix.local # Zabbix server hostname
-KOPIA_CLIENT_HOSTNAME=myapp-01   # Custom hostname (optional)
-
-# Deploy only Zabbix agent on client machine
-./scripts/setup_client.sh
-# OR
-docker compose -f docker/docker-compose.zabbix_agent.yml up -d
-```
 
 #### Available Client Metrics
 - 📊 Backup status and timing
