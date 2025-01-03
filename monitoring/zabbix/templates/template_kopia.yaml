@@ -1,6 +1,5 @@
 zabbix_export:
   version: '6.0'
-  date: '2024-01-15T12:00:00Z'
   groups:
     - uuid: 7df96b18c230490a9a0a9e2307226338
       name: Templates/Backup
@@ -10,70 +9,100 @@ zabbix_export:
       template: Template Kopia Backup
       name: Template Kopia Backup
       description: |
-        Kopia backup monitoring template.
+        Comprehensive monitoring template for Kopia backup system.
         Includes backup status, repository health, and performance metrics.
+      
       groups:
         - name: Templates/Backup
+      
       items:
-        # Backup Status
-        - name: 'Backup last status'
-          key: 'kopia.backup.status'
+        # NAS Status
+        - name: 'NAS Connection Status'
+          key: 'kopia.nas.status'
           type: ZABBIX_ACTIVE
           value_type: NUMERIC
-          description: 'Status of the last backup (0=failed, 1=success)'
+          description: 'Status of NAS connection (0-4)'
           tags:
             - tag: component
-              value: backup
+              value: nas
           triggers:
-            - uuid: dbd61cc2a96f4d2eb5d261b75415a0c2
-              expression: 'last(/Template Kopia Backup/kopia.backup.status)=0'
-              name: 'Kopia: Last backup failed'
+            - expression: 'last(/Template Kopia Backup/kopia.nas.status)<4'
+              name: 'Kopia: NAS connection issue'
               priority: HIGH
-              description: 'Last backup operation failed'
+              description: 'NAS connection is not optimal'
               manual_close: 'YES'
 
-        - name: 'Backup last run time'
-          key: 'kopia.backup.last_time'
+        # Backup Status
+        - name: 'Backup Status'
+          key: 'kopia.backup.status'
           type: ZABBIX_ACTIVE
           value_type: TEXT
-          description: 'Timestamp of last backup attempt'
-          tags:
-            - tag: component
-              value: backup
-
-        - name: 'Backup duration'
-          key: 'kopia.backup.duration'
-          type: ZABBIX_ACTIVE
-          value_type: FLOAT
-          units: 's'
-          description: 'Duration of last backup in seconds'
+          description: 'Status of the last backup'
           tags:
             - tag: component
               value: backup
           triggers:
-            - uuid: 7c8e89b1d5684a0d9f6c4b8e3a2f1d5e
-              expression: 'last(/Template Kopia Backup/kopia.backup.duration)>7200'
-              name: 'Kopia: Backup taking too long'
-              priority: WARNING
-              description: 'Backup operation taking more than 2 hours'
+            - expression: 'last(/Template Kopia Backup/kopia.backup.status)="error"'
+              name: 'Kopia: Backup failed'
+              priority: HIGH
+              description: 'Last backup operation failed'
 
-        # Repository Metrics
-        - name: 'Repository size'
-          key: 'kopia.repo.size'
+        - name: 'Backup Age (hours)'
+          key: 'kopia.backup.age'
+          type: ZABBIX_ACTIVE
+          value_type: FLOAT
+          units: 'h'
+          description: 'Age of the last backup in hours'
+          tags:
+            - tag: component
+              value: backup
+          triggers:
+            - expression: 'last(/Template Kopia Backup/kopia.backup.age)>24'
+              name: 'Kopia: Backup too old'
+              priority: WARNING
+              description: 'Last backup is older than 24 hours'
+
+        - name: 'Backup Size'
+          key: 'kopia.backup.size'
           type: ZABBIX_ACTIVE
           value_type: NUMERIC
           units: 'B'
-          description: 'Total size of repository'
+          description: 'Size of the last backup'
           preprocessing:
             - type: CHANGE_PER_SECOND
               parameters:
                 - ''
           tags:
             - tag: component
+              value: backup
+
+        # Repository Status
+        - name: 'Repository Status'
+          key: 'kopia.repo.status'
+          type: ZABBIX_ACTIVE
+          value_type: TEXT
+          description: 'Repository health status'
+          tags:
+            - tag: component
+              value: repository
+          triggers:
+            - expression: 'last(/Template Kopia Backup/kopia.repo.status)="error"'
+              name: 'Kopia: Repository unhealthy'
+              priority: HIGH
+              description: 'Repository health check failed'
+
+        - name: 'Repository Size'
+          key: 'kopia.repo.size'
+          type: ZABBIX_ACTIVE
+          value_type: NUMERIC
+          units: 'B'
+          description: 'Total repository size'
+          tags:
+            - tag: component
               value: repository
 
-        - name: 'Repository space available'
-          key: 'kopia.repo.space_available'
+        - name: 'Repository Space Available'
+          key: 'kopia.repo.space'
           type: ZABBIX_ACTIVE
           value_type: NUMERIC
           units: 'B'
@@ -82,52 +111,13 @@ zabbix_export:
             - tag: component
               value: repository
           triggers:
-            - uuid: 9a4f67c3e12b4f9d8b5a2c1d0e3f4a5b
-              expression: 'last(/Template Kopia Backup/kopia.repo.space_available)<10737418240'
+            - expression: 'last(/Template Kopia Backup/kopia.repo.space)<10737418240'
               name: 'Kopia: Low repository space'
               priority: WARNING
               description: 'Less than 10GB available in repository'
 
-        # Performance Metrics
-        - name: 'Upload speed'
-          key: 'kopia.performance.upload_speed'
-          type: ZABBIX_ACTIVE
-          value_type: NUMERIC
-          units: 'Bps'
-          description: 'Current upload speed'
-          tags:
-            - tag: component
-              value: performance
-
-        - name: 'Download speed'
-          key: 'kopia.performance.download_speed'
-          type: ZABBIX_ACTIVE
-          value_type: NUMERIC
-          units: 'Bps'
-          description: 'Current download speed'
-          tags:
-            - tag: component
-              value: performance
-
-        # Health Checks
-        - name: 'Repository health'
-          key: 'kopia.repo.health'
-          type: ZABBIX_ACTIVE
-          value_type: NUMERIC
-          description: 'Repository health status (0=unhealthy, 1=healthy)'
-          tags:
-            - tag: component
-              value: health
-          triggers:
-            - uuid: b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6
-              expression: 'last(/Template Kopia Backup/kopia.repo.health)=0'
-              name: 'Kopia: Repository unhealthy'
-              priority: HIGH
-              description: 'Repository health check failed'
-              manual_close: 'YES'
-
       discovery_rules:
-        - name: 'Backup sources discovery'
+        - name: 'Backup Sources Discovery'
           key: 'kopia.discovery.sources'
           type: ZABBIX_ACTIVE
           description: 'Discover backup sources'
@@ -140,11 +130,35 @@ zabbix_export:
               tags:
                 - tag: source
                   value: '{#SOURCE}'
-              trigger_prototypes:
-                - expression: 'last(/Template Kopia Backup/kopia.backup.source.status[{#SOURCE}])=0'
-                  name: 'Kopia: Backup failed for {#SOURCE}'
-                  priority: HIGH
-                  description: 'Backup failed for source {#SOURCE}'
+
+      dashboards:
+        - name: 'Kopia Backup Overview'
+          display_period: 30
+          auto_start: 1
+          pages:
+            - name: 'Overview'
+              widgets:
+                - type: graph
+                  name: 'Backup Size Trend'
+                  x: 0
+                  y: 0
+                  width: 12
+                  height: 5
+                  graph_items:
+                    - item:
+                        host: 'Template Kopia Backup'
+                        key: 'kopia.backup.size'
+
+                - type: graph
+                  name: 'Repository Usage'
+                  x: 0
+                  y: 5
+                  width: 12
+                  height: 5
+                  graph_items:
+                    - item:
+                        host: 'Template Kopia Backup'
+                        key: 'kopia.repo.size'
 
       tags:
         - tag: class
@@ -156,46 +170,20 @@ zabbix_export:
         - macro: '{$BACKUP_MAX_AGE}'
           value: '86400'
           description: 'Maximum age of backup in seconds (default: 24h)'
-        - macro: '{$BACKUP_MAX_DURATION}'
-          value: '7200'
-          description: 'Maximum backup duration in seconds (default: 2h)'
         - macro: '{$REPO_MIN_SPACE}'
           value: '10737418240'
           description: 'Minimum repository space in bytes (default: 10GB)'
 
-      dashboards:
-        - name: 'Kopia Backup Overview'
-          display_period: 30
-          auto_start: 1
-          pages:
-            - name: 'Overview'
-              widgets:
-                - type: graph
-                  name: 'Backup Duration'
-                  x: 0
-                  y: 0
-                  width: 12
-                  height: 5
-                  graph_items:
-                    - item:
-                        host: 'Template Kopia Backup'
-                        key: 'kopia.backup.duration'
-
-                - type: graph
-                  name: 'Repository Size'
-                  x: 0
-                  y: 5
-                  width: 12
-                  height: 5
-                  graph_items:
-                    - item:
-                        host: 'Template Kopia Backup'
-                        key: 'kopia.repo.size'
-
       valuemaps:
-        - name: 'Backup Status'
+        - name: 'NAS Status'
           mappings:
             - value: '0'
-              newvalue: 'Failed'
+              newvalue: 'Unreachable'
             - value: '1'
-              newvalue: 'Success' 
+              newvalue: 'Share Unavailable'
+            - value: '2'
+              newvalue: 'Not Mounted'
+            - value: '3'
+              newvalue: 'Read Only'
+            - value: '4'
+              newvalue: 'OK'

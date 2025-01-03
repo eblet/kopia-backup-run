@@ -1,286 +1,392 @@
 # 📊 Kopia Monitoring Stack
 
-## 🎯 Overview
-Comprehensive monitoring solution for Kopia backup system with support for Prometheus, Grafana, and Zabbix.
+## Table of Contents
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Components](#components)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Monitoring Profiles](#monitoring-profiles)
+- [Metrics & Alerts](#metrics--alerts)
+- [Maintenance](#maintenance)
+- [Troubleshooting](#troubleshooting)
 
-## 🏗️ Architecture
+## Overview
+
+The Kopia Monitoring Stack provides comprehensive monitoring capabilities:
+- 🔄 Real-time backup status monitoring
+- 📈 Performance metrics collection
+- 🚨 Intelligent alerting system
+- 📊 Customizable dashboards
+- 🛠️ Maintenance tools
+
+## Architecture
 
 ```mermaid
 graph TB
-    subgraph "📊 Metrics Collection"
+    subgraph "Metrics Collection"
         KE[Kopia Exporter]
         NE[Node Exporter]
         ZA[Zabbix Agent]
     end
     
-    subgraph "💾 Storage & Processing"
-        P[Prometheus]
-        Z[Zabbix Server]
+    subgraph "Storage & Processing"
+        PR[Prometheus]
+        ZS[Zabbix Server]
     end
     
-    subgraph "📈 Visualization"
-        G[Grafana]
+    subgraph "Visualization"
+        GF[Grafana]
         ZW[Zabbix Web]
     end
     
-    KE -->|9091| P
-    NE -->|9100| P
-    ZA -->|10050| Z
-    P -->|Data| G
-    Z -->|Data| G
-    Z -->|Data| ZW
-    
-    classDef collectors fill:#bbf,stroke:#333,stroke-width:2px;
-    classDef storage fill:#fbb,stroke:#333,stroke-width:2px;
-    classDef viz fill:#bfb,stroke:#333,stroke-width:2px;
-    
-    class KE,NE,ZA collectors;
-    class P,Z storage;
-    class G,ZW viz;
+    KE -->|Metrics| PR
+    NE -->|System Metrics| PR
+    ZA -->|Status| ZS
+    PR -->|Data| GF
+    ZS -->|Data| ZW & GF
 ```
 
-## 🔄 Data Flow
+## Components
 
-```mermaid
-sequenceDiagram
-    participant KE as Kopia Exporter
-    participant NE as Node Exporter
-    participant P as Prometheus
-    participant G as Grafana
-    participant Z as Zabbix
-    
-    loop Every 15s
-        P->>KE: Scrape /metrics
-        KE-->>P: Return Backup Metrics
-        P->>NE: Scrape /metrics
-        NE-->>P: Return System Metrics
-    end
-    
-    loop Every 1m
-        Z->>KE: Active Check
-        KE-->>Z: Return Status
-    end
-    
-    loop Every 5m
-        G->>P: Query Metrics
-        P-->>G: Return Data
-        G->>Z: Query Data
-        Z-->>G: Return Data
-    end
-    
-    Note over G: Display in<br/>Dashboards
+### Core Components
+- **Kopia Exporter**: Custom metrics from Kopia
+- **Node Exporter**: System metrics
+- **Zabbix Agent**: Status monitoring
+- **Prometheus**: Metrics storage
+- **Grafana**: Visualization
+- **Zabbix**: Enterprise monitoring
+
+## Monitoring Profiles
+
+### Profile Comparison
+
+| Feature | none | base-metrics | grafana-local | grafana-external | zabbix-external | prometheus-external | grafana-zabbix-external | all-external | full-stack |
+|---------|------|--------------|---------------|------------------|-----------------|-------------------|----------------------|--------------|------------|
+| Kopia Exporter | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
+| Node Exporter | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
+| Zabbix Agent | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Local Prometheus | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Local Grafana | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Local Zabbix | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| External Grafana | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| External Zabbix | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| External Prometheus | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ | ❌ |
+
+### Profile Details
+
+1. **No Monitoring** (`none`)
+```bash
+MONITORING_PROFILE=none
 ```
+- All monitoring components disabled
+- No metrics collection
+- Minimal resource usage
+- Suitable for testing or development
 
-## 🧩 Components
-
-### 📊 Exporters
-- 🔄 **Kopia Exporter**: Custom exporter for Kopia metrics
-- 📈 **Node Exporter**: System metrics exporter
-
-### 🎯 Monitoring Systems
-- 📝 **Prometheus**: Metrics collection and storage
-- 📊 **Grafana**: Visualization and dashboards
-- 🔍 **Zabbix**: Enterprise monitoring platform
-
-## 📁 Directory Structure
-```
-monitoring/
-├── 🐳 docker-compose.monitoring.yml    # Main monitoring stack composition
-├── 📊 exporters/
-│   └── kopia-exporter/             # Custom Kopia metrics exporter
-│       ├── Dockerfile
-│       ├── main.go
-│       └── go.mod
-├── 📈 prometheus/
-│   └── config/                     # Prometheus configuration
-│       └── prometheus.yml
-├── 📊 grafana/
-│   └── provisioning/              # Grafana provisioning
-│       ├── dashboards/
-│       └── datasources/
-└── 🔍 zabbix/
-    └── config/                    # Zabbix agent configuration
-        └── zabbix_agentd.d/
-            └── userparameter_kopia_client.conf
-```
-
-## 📊 Metrics Available
-
-### 🔄 Kopia Metrics (port 9091)
-- `kopia_backup_status`: Status of the last backup (0=error, 1=success)
-- `kopia_backup_size_bytes`: Size of the last backup in bytes
-- `kopia_last_backup_timestamp`: Timestamp of the last backup
-
-### 📈 Node Metrics (port 9100)
-Standard node_exporter metrics including:
-- 💻 CPU usage
-- 🧠 Memory usage
-- 💾 Disk space
-- 🌐 Network statistics
-
-## ⚙️ Configuration Profiles
-
-### 1. 📊 Base Metrics
+2. **Base Metrics** (`base-metrics`)
 ```bash
 MONITORING_PROFILE=base-metrics
 ```
-Deploys:
-- 📝 Prometheus
-- 🔄 Kopia Exporter
-- 📈 Node Exporter
+- Local Prometheus instance
+- Kopia and Node exporters
+- No visualization
+- Basic metrics collection
+- Minimal resource footprint
+- Suitable for integration with existing monitoring
 
-### 2. 🏠 Local Monitoring
+3. **Local Grafana** (`grafana-local`)
 ```bash
-# 📊 Grafana Local
 MONITORING_PROFILE=grafana-local
+GRAFANA_ADMIN_PASSWORD=your-password
 ```
+- Local Prometheus + Grafana
+- Kopia and Node exporters
+- Pre-configured dashboards
+- Local metrics storage
+- Full visualization capabilities
+- Self-contained monitoring solution
 
-### 3. 🌐 External Services
+4. **External Grafana** (`grafana-external`)
 ```bash
-# 📊 External Grafana
 MONITORING_PROFILE=grafana-external
 GRAFANA_URL=http://your-grafana:3000
 GRAFANA_API_KEY=your-api-key
+```
+- Connects to existing Grafana
+- Local Prometheus instance
+- Kopia and Node exporters
+- Custom dashboard provisioning
+- Uses existing visualization platform
 
-# 🔍 External Zabbix
+5. **External Zabbix** (`zabbix-external`)
+```bash
 MONITORING_PROFILE=zabbix-external
-ZABBIX_SERVER_HOST=your-zabbix-server
+ZABBIX_SERVER=your-zabbix-server
+ZABBIX_SERVER_PORT=10051
+```
+- Connects to existing Zabbix server
+- Zabbix agent only
+- Custom templates and triggers
+- No Prometheus/Grafana components
+- Traditional monitoring approach
 
-# 📈 External Prometheus
+6. **External Prometheus** (`prometheus-external`)
+```bash
 MONITORING_PROFILE=prometheus-external
-PROMETHEUS_SCRAPE=true
+PROMETHEUS_URL=http://your-prometheus:9090
+PROMETHEUS_BASIC_AUTH=true
+```
+- Connects to existing Prometheus
+- Kopia and Node exporters
+- No local storage
+- Exports metrics to external system
+- Integration with existing monitoring
 
-# 🌟 All External Services
+7. **External Grafana + Zabbix** (`grafana-zabbix-external`)
+```bash
+MONITORING_PROFILE=grafana-zabbix-external
+GRAFANA_URL=http://your-grafana:3000
+ZABBIX_SERVER=your-zabbix-server
+```
+- Hybrid monitoring setup
+- Connects to existing Grafana and Zabbix
+- Kopia and Node exporters
+- Zabbix agent
+- Combined metrics from both systems
+- Best of both worlds approach
+
+8. **All External** (`all-external`)
+```bash
 MONITORING_PROFILE=all-external
 ```
+- Uses all external systems
+- No local monitoring components
+- Maximum flexibility
+- Minimal local resource usage
+- Complex integration scenarios
+- Requires existing infrastructure
 
-## 🔗 Integration Examples
+9. **Full Stack** (`full-stack`)
+```bash
+MONITORING_PROFILE=full-stack
+```
+- Complete local installation
+- All components included:
+  - Prometheus
+  - Grafana
+  - Zabbix
+  - All exporters
+- Maximum control
+- Highest resource usage
+- Perfect for development/testing
+- Self-contained solution
 
-### 📈 Prometheus Configuration
+### Resource Requirements
+
+| Profile | CPU | Memory | Disk |
+|---------|-----|---------|------|
+| none | - | - | - |
+| base-metrics | 0.5 | 512MB | 5GB |
+| grafana-local | 1.0 | 1GB | 10GB |
+| grafana-external | 0.5 | 512MB | 5GB |
+| zabbix-external | 0.2 | 256MB | 1GB |
+| prometheus-external | 0.5 | 512MB | 1GB |
+| grafana-zabbix-external | 0.5 | 512MB | 1GB |
+| all-external | 0.5 | 512MB | 1GB |
+| full-stack | 2.0 | 2GB | 20GB |
+
+## Installation
+
+### Prerequisites
+```bash
+# System requirements
+- Docker 20.10+
+- 2GB RAM minimum
+- 10GB disk space
+```
+
+### Basic Setup
+```bash
+# Clone repository
+git clone https://github.com/username/kopia-backup-stack
+cd kopia-backup-stack
+
+# Configure environment
+cp .env.example .env
+nano .env
+
+# Start monitoring
+./scripts/setup_monitoring.sh
+```
+
+## Configuration
+
+### Environment Variables
+```bash
+# Basic Settings
+MONITORING_PROFILE=full-stack
+GRAFANA_ADMIN_PASSWORD=secure-password
+
+# External Services
+GRAFANA_URL=http://grafana:3000
+PROMETHEUS_URL=http://prometheus:9090
+ZABBIX_SERVER=zabbix-server
+
+# Authentication
+MONITORING_BASIC_AUTH=true
+MONITORING_AUTH_USER=admin
+MONITORING_AUTH_PASSWORD=secure-pass
+
+# Resources
+PROMETHEUS_CPU_LIMIT=1
+PROMETHEUS_MEM_LIMIT=2G
+```
+
+## Metrics & Alerts
+
+### Key Metrics
+
+1. Backup Metrics
+```promql
+# Backup Status
+kopia_backup_status{source="path"}
+
+# Backup Size
+rate(kopia_backup_size_bytes[5m])
+```
+
+2. Repository Metrics
+```promql
+# Repository Status
+kopia_repository_status
+
+# Free Space
+kopia_repository_free_space_bytes
+```
+
+### Alert Rules
+
+1. Backup Failures
 ```yaml
-scrape_configs:
-  - job_name: 'kopia'
-    static_configs:
-      - targets: ['kopia-host:9091']
-  - job_name: 'node'
-    static_configs:
-      - targets: ['kopia-host:9100']
+- alert: KopiaBackupFailed
+  expr: kopia_backup_status == 0
+  for: 5m
+  labels:
+    severity: critical
 ```
 
-### 📊 Grafana Dashboard
-```json
-{
-  "panels": [
-    {
-      "title": "Backup Status",
-      "targets": [
-        {
-          "expr": "kopia_backup_status",
-          "legendFormat": "{{source}}"
-        }
-      ]
-    }
-  ]
-}
+2. Space Issues
+```yaml
+- alert: KopiaRepositoryLowSpace
+  expr: kopia_repository_free_space_bytes < 10GB
+  for: 15m
+  labels:
+    severity: warning
 ```
 
-### 🔍 Zabbix Template
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<zabbix_export>
-    <templates>
-        <template>
-            <name>Template Kopia Backup</name>
-            <items>
-                <item>
-                    <name>Backup Status</name>
-                    <key>kopia.backup.status</key>
-                    <type>ZABBIX_ACTIVE</type>
-                </item>
-            </items>
-        </template>
-    </templates>
-</zabbix_export>
+## Maintenance
+
+### Daily Tasks
+```bash
+# Check backup status
+docker exec kopia-server kopia snapshot list --last 24h
+
+# Verify metrics
+curl -s http://localhost:9091/metrics
 ```
 
-## 🔍 Troubleshooting
+### Weekly Tasks
+```bash
+# Check monitoring stack
+docker compose ps
 
-### 🔄 Check Component Status
+# Verify alerts
+curl -s http://localhost:9090/api/v1/alerts
+```
+
+### Monthly Tasks
+```bash
+# Update components
+docker compose pull
+docker compose up -d
+
+# Review dashboards
+./scripts/backup_dashboards.sh
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. Missing Metrics
+```bash
+# Check exporter
+curl -s http://localhost:9091/metrics
+
+# Verify Prometheus targets
+curl -s http://localhost:9090/api/v1/targets
+```
+
+2. Dashboard Issues
+```bash
+# Check Grafana
+docker logs grafana
+
+# Verify datasource
+curl -H "Authorization: Bearer ${GRAFANA_API_KEY}" \
+     http://localhost:3000/api/datasources
+```
+
+### Performance Optimization
+
+1. Prometheus Storage
+```yaml
+storage:
+  tsdb:
+    retention.time: 15d
+    retention.size: 10GB
+```
+
+2. Grafana Resources
+```yaml
+grafana:
+  resources:
+    limits:
+      cpus: '1'
+      memory: 1G
+```
+
+### Health Checks
 ```bash
 # Check all components
-docker compose -f docker-compose.monitoring.yml ps
+./scripts/check_monitoring.sh
 
-# Check specific component logs
-docker compose -f docker-compose.monitoring.yml logs kopia-exporter
-docker compose -f docker-compose.monitoring.yml logs node-exporter
+# Individual checks
+curl -s http://localhost:9091/health
+curl -s http://localhost:9090/-/healthy
+curl -s http://localhost:3000/api/health
 ```
 
-### ❗ Common Issues
+## Best Practices
 
-#### 1. 🔌 Port Conflicts
-```bash
-# Check if ports are in use
-ss -tulpn | grep -E ':(9090|9091|9100|10050)'
-```
+### Monitoring
+- Regular metric validation
+- Alert tuning
+- Dashboard optimization
+- Resource monitoring
+- Log rotation
 
-#### 2. 📊 Metrics Not Available
-```bash
-# Test Kopia Exporter
-curl http://localhost:9091/metrics
+### Maintenance
+- Regular updates
+- Configuration backups
+- Performance tuning
+- Security patches
+- Documentation updates
 
-# Test Node Exporter
-curl http://localhost:9100/metrics
-```
-
-#### 3. 🔍 Zabbix Agent Issues
-```bash
-# Check Zabbix agent logs
-docker compose -f docker-compose.monitoring.yml logs zabbix-agent
-
-# Test agent connection
-zabbix_get -s localhost -p 10050 -k "agent.ping"
-```
-
-## 🔒 Security Considerations
-
-### 🌐 Network Access
-- 📈 Prometheus: 9090/tcp
-- 🔄 Kopia Exporter: 9091/tcp
-- 📊 Node Exporter: 9100/tcp
-- 🔍 Zabbix Agent: 10050/tcp
-
-### 📝 Recommendations
-1. 🛡️ Use firewall rules to restrict access
-2. 🔐 Enable TLS where possible
-3. 🔑 Use API keys for external services
-4. 🔄 Regular security updates
-
-## 🛠️ Maintenance
-
-### 📝 Log Rotation
-```bash
-# Check log sizes
-du -sh /var/log/monitoring/*
-
-# Manual rotation if needed
-logrotate -f /etc/logrotate.d/kopia
-```
-
-### 🧹 Cleanup
-```bash
-# Clean old metrics data
-docker volume prune -f --filter "label=com.docker.compose.project=kopia-monitoring"
-
-# Remove unused images
-docker image prune -f
-```
-
-## 📝 Notes
-> 💡 Graph shows how metrics flow through the system.
-> 
-> 🔗 Components can be deployed independently or together.
-> 
-> 🎯 Designed for flexibility and scalability.
-
-## 📄 License
-MIT
+### Security
+- Authentication enabled
+- TLS encryption
+- Regular audits
+- Access control
+- Secure communication

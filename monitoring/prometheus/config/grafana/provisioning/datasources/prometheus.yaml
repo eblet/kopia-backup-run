@@ -1,5 +1,9 @@
 apiVersion: 1
 
+deleteDatasources:
+  - name: Kopia-Prometheus
+    orgId: 1
+
 datasources:
   - name: Kopia-Prometheus
     type: prometheus
@@ -14,3 +18,8 @@ datasources:
     basicAuthUser: ${PROMETHEUS_AUTH_USER}
     secureJsonData:
       basicAuthPassword: ${PROMETHEUS_AUTH_PASSWORD} 
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: tempo
+    version: 1
+    editable: true 

@@ -10,7 +10,7 @@ alerting:
   alertmanagers:
     - static_configs:
         - targets:
-          # - alertmanager:9093  # Раскомментируйте если используете Alertmanager
+          # - alertmanager:9093  # Uncomment if you want to use Alertmanager
 
 scrape_configs:
   - job_name: 'kopia'
@@ -21,6 +21,15 @@ scrape_configs:
       - targets: ['kopia-exporter:9091']
     metrics_path: '/metrics'
     scheme: 'http'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: '${KOPIA_CLIENT_HOSTNAME}'
+    metric_relabel_configs:
+      - source_labels: [source]
+        target_label: backup_source
+        regex: '(.+)'
+        replacement: '$1'
 
   - job_name: 'node'
     basic_auth:
@@ -30,9 +39,15 @@ scrape_configs:
       - targets: ['node-exporter:9100']
     metrics_path: '/metrics'
     scheme: 'http'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: '${KOPIA_CLIENT_HOSTNAME}'
 
   - job_name: 'kopia-server'
+    metrics_path: '/metrics'
+    scheme: '${KOPIA_SECURE_MODE:+https}${KOPIA_SECURE_MODE:-http}'
     static_configs:
       - targets: ['${KOPIA_SERVER_IP}:${KOPIA_SERVER_PORT}']
-    metrics_path: '/metrics'
-    scheme: '${KOPIA_SECURE_MODE:+https}${KOPIA_SECURE_MODE:-http}' 
+    tls_config:
+      insecure_skip_verify: ${KOPIA_TLS_SKIP_VERIFY:-false} 

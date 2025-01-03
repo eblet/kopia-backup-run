@@ -7,12 +7,15 @@ import (
     "os"
     "os/exec"
     "time"
+    "sync"
+    "syscall"
 
     "github.com/prometheus/client_golang/prometheus"
     "github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
+    // Backup metrics
     backupStatus = prometheus.NewGaugeVec(
         prometheus.GaugeOpts{
             Name: "kopia_backup_status",
@@ -29,6 +32,14 @@ var (
         []string{"source"},
     )
 
+    backupDuration = prometheus.NewGaugeVec(
+        prometheus.GaugeOpts{
+            Name: "kopia_backup_duration_seconds",
+            Help: "Duration of the last backup in seconds",
+        },
+        []string{"source"},
+    )
+
     lastBackupTime = prometheus.NewGaugeVec(
         prometheus.GaugeOpts{
             Name: "kopia_last_backup_timestamp",
@@ -37,19 +48,67 @@ var (
         []string{"source"},
     )
 
+    // Repository metrics
     repoStatus = prometheus.NewGauge(
         prometheus.GaugeOpts{
             Name: "kopia_repository_status",
             Help: "Repository connection status (0=disconnected, 1=connected)",
         },
     )
+
+    repoSize = prometheus.NewGauge(
+        prometheus.GaugeOpts{
+            Name: "kopia_repository_size_bytes",
+            Help: "Total size of repository in bytes",
+        },
+    )
+
+    repoFreeSpace = prometheus.NewGauge(
+        prometheus.GaugeOpts{
+            Name: "kopia_repository_free_space_bytes",
+            Help: "Available space in repository",
+        },
+    )
+
+    // Cache metrics
+    cacheSize = prometheus.NewGauge(
+        prometheus.GaugeOpts{
+            Name: "kopia_cache_size_bytes",
+            Help: "Size of Kopia cache in bytes",
+        },
+    )
+
+    cacheHits = prometheus.NewCounter(
+        prometheus.CounterOpts{
+            Name: "kopia_cache_hits_total",
+            Help: "Total number of cache hits",
+        },
+    )
+
+    cacheMisses = prometheus.NewCounter(
+        prometheus.CounterOpts{
+            Name: "kopia_cache_misses_total",
+            Help: "Total number of cache misses",
+        },
+    )
 )
 
 func init() {
+    // Register backup metrics
     prometheus.MustRegister(backupStatus)
     prometheus.MustRegister(backupSize)
+    prometheus.MustRegister(backupDuration)
     prometheus.MustRegister(lastBackupTime)
+
+    // Register repository metrics
     prometheus.MustRegister(repoStatus)
+    prometheus.MustRegister(repoSize)
+    prometheus.MustRegister(repoFreeSpace)
+
+    // Register cache metrics
+    prometheus.MustRegister(cacheSize)
+    prometheus.MustRegister(cacheHits)
+    prometheus.MustRegister(cacheMisses)
 }
 
 type SnapshotInfo struct {
@@ -57,94 +116,136 @@ type SnapshotInfo struct {
     Source    string    `json:"source"`
     StartTime time.Time `json:"startTime"`
     EndTime   time.Time `json:"endTime"`
-    Size      int64     `json:"size"`
+    Stats     struct {
+        TotalSize int64 `json:"totalSize"`
+        Files     int   `json:"files"`
+    } `json:"stats"`
+    Error      string `json:"error,omitempty"`
+    Incomplete bool   `json:"incomplete"`
 }
 
-func setupKopiaConfig() error {
-    configPath := os.Getenv("KOPIA_CONFIG_PATH")
-    if configPath == "" {
-        configPath = "/app/config"
-    }
+type RepositoryInfo struct {
+    Status string `json:"status"`
+    Size   int64  `json:"size"`
+    Cache  struct {
+        Size  int64 `json:"size"`
+        Hits  int64 `json:"hits"`
+        Miss  int64 `json:"miss"`
+    } `json:"cache"`
+}
 
-    // Создаем директории если их нет
-    dirs := []string{
-        configPath,
-        os.Getenv("KOPIA_CACHE_DIRECTORY"),
-        "/app/logs",
-    }
+func collectMetrics(wg *sync.WaitGroup) {
+    defer wg.Done()
 
-    for _, dir := range dirs {
-        if dir != "" {
-            if err := os.MkdirAll(dir, 0755); err != nil {
-                return err
+    // Collect backup metrics
+    if snapshots, err := getSnapshots(); err == nil {
+        for _, snapshot := range snapshots {
+            source := snapshot.Source
+            if snapshot.Error != "" || snapshot.Incomplete {
+                backupStatus.WithLabelValues(source).Set(0)
+            } else {
+                backupStatus.WithLabelValues(source).Set(1)
             }
+            backupSize.WithLabelValues(source).Set(float64(snapshot.Stats.TotalSize))
+            backupDuration.WithLabelValues(source).Set(snapshot.EndTime.Sub(snapshot.StartTime).Seconds())
+            lastBackupTime.WithLabelValues(source).Set(float64(snapshot.EndTime.Unix()))
         }
     }
 
-    return nil
+    // Collect repository metrics
+    if repoInfo, err := getRepositoryInfo(); err == nil {
+        if repoInfo.Status == "connected" {
+            repoStatus.Set(1)
+        } else {
+            repoStatus.Set(0)
+        }
+        repoSize.Set(float64(repoInfo.Size))
+        
+        // Update cache metrics
+        cacheSize.Set(float64(repoInfo.Cache.Size))
+        cacheHits.Add(float64(repoInfo.Cache.Hits))
+        cacheMisses.Add(float64(repoInfo.Cache.Miss))
+    }
+
+    // Get repository free space
+    if freeSpace, err := getRepositoryFreeSpace(); err == nil {
+        repoFreeSpace.Set(float64(freeSpace))
+    }
+}
+
+func getSnapshots() ([]SnapshotInfo, error) {
+    cmd := exec.Command("kopia", "snapshot", "list", "--json")
+    output, err := cmd.Output()
+    if err != nil {
+        return nil, err
+    }
+
+    var snapshots []SnapshotInfo
+    if err := json.Unmarshal(output, &snapshots); err != nil {
+        return nil, err
+    }
+    return snapshots, nil
+}
+
+func getRepositoryInfo() (*RepositoryInfo, error) {
+    cmd := exec.Command("kopia", "repository", "status", "--json")
+    output, err := cmd.Output()
+    if err != nil {
+        return nil, err
+    }
+
+    var info RepositoryInfo
+    if err := json.Unmarshal(output, &info); err != nil {
+        return nil, err
+    }
+    return &info, nil
+}
+
+func getRepositoryFreeSpace() (int64, error) {
+    repoPath := os.Getenv("KOPIA_REPO_PATH")
+    if repoPath == "" {
+        repoPath = "/repository"
+    }
+
+    var stat syscall.Statfs_t
+    if err := syscall.Statfs(repoPath, &stat); err != nil {
+        return 0, err
+    }
+
+    return int64(stat.Bavail) * int64(stat.Bsize), nil
 }
 
 func main() {
-    if err := setupKopiaConfig(); err != nil {
-        log.Fatalf("Error setting up config: %v", err)
-    }
-
-    // Получаем параметры подключения из переменных окружения
-    serverURL := os.Getenv("KOPIA_SERVER_URL")
-    if serverURL == "" {
-        serverURL = "http://kopia-server:51515"
-    }
-
-    password := os.Getenv("KOPIA_PASSWORD")
-    if password == "" {
-        log.Fatal("KOPIA_PASSWORD environment variable is required")
-    }
-
-    // Пробуем подключиться к серверу
-    connectCmd := exec.Command("kopia", "repository", "connect", "server",
-        "--url", serverURL,
-        "--password", password,
-        "--no-check-for-updates",
-        "--no-progress")
-
-    if output, err := connectCmd.CombinedOutput(); err != nil {
-        log.Printf("Error connecting to Kopia server: %v\nOutput: %s", err, output)
-        repoStatus.Set(0)
-    } else {
-        log.Printf("Successfully connected to Kopia server")
-        repoStatus.Set(1)
-    }
-
-    http.Handle("/metrics", promhttp.Handler())
-    go collectMetrics()
-    log.Printf("Starting Kopia exporter on :9091")
-    log.Fatal(http.ListenAndServe(":9091", nil))
-}
-
-func collectMetrics() {
-    for {
-        cmd := exec.Command("kopia", "snapshot", "list", "--json", "--no-progress")
-        output, err := cmd.CombinedOutput()
-        if err != nil {
-            log.Printf("Error executing kopia: %v\nOutput: %s", err, output)
-            backupStatus.WithLabelValues("default").Set(0)
-            repoStatus.Set(0)
-        } else {
-            var snapshots []SnapshotInfo
-            if err := json.Unmarshal(output, &snapshots); err != nil {
-                log.Printf("Error parsing JSON: %v", err)
-                continue
-            }
-
-            repoStatus.Set(1)
-            // Обработка каждого снапшота
-            for _, snapshot := range snapshots {
-                source := snapshot.Source
-                backupStatus.WithLabelValues(source).Set(1)
-                backupSize.WithLabelValues(source).Set(float64(snapshot.Size))
-                lastBackupTime.WithLabelValues(source).Set(float64(snapshot.EndTime.Unix()))
-            }
+    // Configure logging
+    log.SetFlags(log.LstdFlags | log.Lshortfile)
+    
+    // Start metrics collection in background
+    go func() {
+        for {
+            var wg sync.WaitGroup
+            wg.Add(1)
+            go collectMetrics(&wg)
+            wg.Wait()
+            time.Sleep(15 * time.Second)
         }
-        time.Sleep(60 * time.Second)
+    }()
+
+    // Start HTTP server
+    http.Handle("/metrics", promhttp.Handler())
+    
+    // Add health check endpoint
+    http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+        w.WriteHeader(http.StatusOK)
+        w.Write([]byte("OK"))
+    })
+
+    port := os.Getenv("KOPIA_EXPORTER_PORT")
+    if port == "" {
+        port = "9091"
+    }
+
+    log.Printf("Starting Kopia exporter on :%s", port)
+    if err := http.ListenAndServe(":"+port, nil); err != nil {
+        log.Fatal(err)
     }
 } 

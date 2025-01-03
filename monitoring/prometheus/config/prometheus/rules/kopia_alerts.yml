@@ -8,8 +8,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "Kopia backup failed"
-          description: "Backup operation has failed on {{ $labels.instance }}"
+          summary: "Backup failed for {{ $labels.source }}"
+          description: "Backup operation has failed on {{ $labels.instance }} for source {{ $labels.source }}"
 
       - alert: KopiaBackupTooOld
         expr: time() - kopia_last_backup_timestamp > 86400
@@ -17,57 +17,49 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Kopia backup too old"
-          description: "Last successful backup is older than 24 hours on {{ $labels.instance }}"
+          summary: "Backup too old for {{ $labels.source }}"
+          description: "Last successful backup is older than 24 hours for source {{ $labels.source }}"
 
       # Repository Alerts
-      - alert: KopiaRepositorySpaceLow
-        expr: (kopia_repository_size_bytes / kopia_repository_total_space_bytes) * 100 > 90
-        for: 30m
+      - alert: KopiaRepositoryDisconnected
+        expr: kopia_repository_status == 0
+        for: 5m
         labels:
-          severity: warning
+          severity: critical
         annotations:
-          summary: "Kopia repository space low"
-          description: "Repository space usage is above 90% on {{ $labels.instance }}"
+          summary: "Repository disconnected"
+          description: "Kopia repository is disconnected on {{ $labels.instance }}"
 
-      - alert: KopiaRepositoryGrowthHigh
-        expr: rate(kopia_repository_size_bytes[6h]) > 1e9
-        for: 1h
-        labels:
-          severity: warning
-        annotations:
-          summary: "High repository growth rate"
-          description: "Repository growing faster than 1GB/hour on {{ $labels.instance }}"
-
-      # Performance Alerts
-      - alert: KopiaUploadSpeedLow
-        expr: rate(kopia_upload_bytes_total[5m]) < 1e6
+      - alert: KopiaRepositoryLowSpace
+        expr: kopia_repository_free_space_bytes / 1024/1024/1024 < 10
         for: 15m
         labels:
           severity: warning
         annotations:
-          summary: "Kopia upload speed low"
-          description: "Upload speed is below 1MB/s on {{ $labels.instance }}"
+          summary: "Low repository space"
+          description: "Less than 10GB free space in repository on {{ $labels.instance }}"
 
+      # Cache Alerts
+      - alert: KopiaCacheHighMissRate
+        expr: rate(kopia_cache_misses_total[5m]) / (rate(kopia_cache_hits_total[5m]) + rate(kopia_cache_misses_total[5m])) > 0.5
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High cache miss rate"
+          description: "Cache miss rate is above 50% on {{ $labels.instance }}"
+
+      # Performance Alerts
       - alert: KopiaBackupDurationHigh
         expr: kopia_backup_duration_seconds > 7200
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "Kopia backup taking too long"
-          description: "Backup operation taking more than 2 hours on {{ $labels.instance }}"
+          summary: "Long backup duration"
+          description: "Backup taking more than 2 hours for source {{ $labels.source }}"
 
-      # Health Checks
-      - alert: KopiaRepositoryUnhealthy
-        expr: kopia_repository_health == 0
-        for: 5m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Kopia repository unhealthy"
-          description: "Repository health check failed on {{ $labels.instance }}"
-
+      # System Alerts
       - alert: KopiaExporterDown
         expr: up{job="kopia"} == 0
         for: 5m
@@ -76,23 +68,3 @@ groups:
         annotations:
           summary: "Kopia exporter down"
           description: "Kopia exporter is not responding on {{ $labels.instance }}"
-
-      # Resource Usage
-      - alert: KopiaCacheUsageHigh
-        expr: kopia_cache_size_bytes / kopia_cache_max_size_bytes * 100 > 90
-        for: 30m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Kopia cache usage high"
-          description: "Cache usage is above 90% on {{ $labels.instance }}"
-
-      # Snapshot Consistency
-      - alert: KopiaSnapshotVerificationFailed
-        expr: kopia_snapshot_verification_status == 0
-        for: 5m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Kopia snapshot verification failed"
-          description: "Snapshot verification failed on {{ $labels.instance }}" 
