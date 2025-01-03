@@ -77,7 +77,7 @@ NAS_MOUNT_PATH=/mnt/nas
 # Deploy server
 sudo ./scripts/setup_server.sh
 # OR
-docker compose -f docker/docker-compose.server.yml up -d
+docker compose -f docker/docker-compose.server.yml --env-file .env up -d
 ```
 
 #### Verify Server
@@ -371,4 +371,3 @@ docker logs kopia-exporter
 
 ## 📄 License
 MIT License - see LICENSE file
-

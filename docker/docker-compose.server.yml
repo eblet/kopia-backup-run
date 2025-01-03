@@ -1,30 +1,36 @@
 version: '3.8'
 
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "${LOG_MAX_SIZE:-100M}"
+    max-file: "${LOG_MAX_FILES:-7}"
+
 services:
   kopia-server:
     image: kopia/kopia:${KOPIA_VERSION:-latest}
     container_name: kopia-server
     volumes:
-      - ${KOPIA_BASE_DIR}:${KOPIA_BASE_DIR}:rw
-      - ${NAS_MOUNT_PATH}:${NAS_MOUNT_PATH}:rw
-      - ${KOPIA_LOG_DIR}:${KOPIA_LOG_DIR}:rw
-      - ${KOPIA_CACHE_DIR}:${KOPIA_CONTAINER_CACHE_DIR}:rw
+      - ${KOPIA_BASE_DIR:-/var/lib/kopia}:${KOPIA_BASE_DIR:-/var/lib/kopia}:rw
+      - ${NAS_MOUNT_PATH:-/mnt/nas}:${NAS_MOUNT_PATH:-/mnt/nas}:rw
+      - ${KOPIA_LOG_DIR:-/var/log/kopia}:${KOPIA_LOG_DIR:-/var/log/kopia}:rw
+      - ${KOPIA_CACHE_DIR:-/var/cache/kopia}:${KOPIA_CONTAINER_CACHE_DIR:-/app/cache}:rw
     environment:
       - KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD}
       - TZ=${TZ:-UTC}
     command: >
       server start
-      --address 0.0.0.0:${KOPIA_SERVER_PORT}
+      --address 0.0.0.0:${KOPIA_SERVER_PORT:-51515}
       --server-username ${KOPIA_SERVER_USERNAME}
       --server-password ${KOPIA_SERVER_PASSWORD}
       ${KOPIA_SECURE_MODE:+--tls-generate-cert}
       ${KOPIA_SECURE_MODE:-"--insecure"}
       ${KOPIA_SERVER_ALLOWED_IPS:+--server-control-access=${KOPIA_SERVER_ALLOWED_IPS}}
-      --server-cache-directory=${KOPIA_CONTAINER_CACHE_DIR}
+      --server-cache-directory=${KOPIA_CONTAINER_CACHE_DIR:-/app/cache}
       --max-upload-speed=${KOPIA_UPLOAD_LIMIT:-0}
       --max-download-speed=${KOPIA_DOWNLOAD_LIMIT:-0}
     ports:
-      - "${KOPIA_SERVER_PORT}:${KOPIA_SERVER_PORT}"
+      - "${KOPIA_SERVER_PORT:-51515}:${KOPIA_SERVER_PORT:-51515}"
     networks:
       - kopia_network
     restart: unless-stopped
@@ -33,25 +39,12 @@ services:
         limits:
           cpus: '${KOPIA_SERVER_CPU_LIMIT:-2}'
           memory: ${KOPIA_SERVER_MEM_LIMIT:-2G}
-    healthcheck:
-      test: ["CMD", "kopia", "repository", "status", "||", "exit", "1"]
-      interval: 5m
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "${LOG_MAX_SIZE:-100M}"
-        max-file: "${LOG_MAX_FILES:-7}"
+    logging: *default-logging
     labels:
       - "com.kopia.version=${KOPIA_VERSION:-latest}"
       - "com.kopia.type=server"
-      - "com.kopia.description=Kopia Backup Server"
 
 networks:
   kopia_network:
     name: ${KOPIA_NETWORK_NAME:-kopia_network}
     driver: bridge
-    labels:
-      - "com.kopia.network=true"
