@@ -27,6 +27,7 @@ graph TB
         subgraph "Enterprise Monitoring"
             ZS[Scripts] -->|Check| Z[Zabbix]
             Z -->|Generate| ZA[Alerts]
+            Z -->|Data Source| G
         end
     end
 
@@ -56,15 +57,11 @@ graph TB
   - Network statistics
   - System load
 
-#### Storage & Visualization
-- **Prometheus**: Time-series database
-  - Query language (PromQL)
-  - Data retention policies
-  - Alert rules
-- **Grafana**: Analytics platform
-  - Pre-configured dashboards
-  - Custom visualizations
-  - Alert notifications
+### Integration Features
+- Unified dashboards combining Prometheus and Zabbix metrics
+- Cross-source alerting
+- Combined visualization
+- Single pane of glass monitoring
 
 ### 2. Zabbix Integration
 
@@ -110,6 +107,9 @@ graph TB
 #### Zabbix Settings
 | Variable | Description | Default | Example |
 |----------|-------------|---------|---------|
+| ZABBIX_URL | Zabbix API URL | http://zabbix-web:80/api_jsonrpc.php | http://zabbix.local/api_jsonrpc.php |
+| ZABBIX_USERNAME | Zabbix admin username | Admin | zabbix_admin |
+| ZABBIX_PASSWORD | Zabbix admin password | zabbix | secure-password |
 | ZABBIX_EXTERNAL_SCRIPTS | Scripts directory | /usr/lib/zabbix/externalscripts | /opt/zabbix/scripts |
 | ZABBIX_AGENT_CONFIG | Agent config directory | /etc/zabbix/zabbix_agentd.d | /etc/zabbix/conf.d |
 
