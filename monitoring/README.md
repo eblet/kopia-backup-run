@@ -17,7 +17,6 @@ graph TB
             NE[Node Exporter] -->|System Metrics| P
             P -->|Store| PD[(Prometheus DB)]
             P -->|Query| G[Grafana]
-            G -->|Alert| GA[Grafana Alerts]
         end
 
         subgraph "Enterprise Monitoring"
