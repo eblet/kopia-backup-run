@@ -11,6 +11,11 @@ Comprehensive monitoring solution for Kopia Backup System:
 
 ```mermaid
 graph TB
+    subgraph "Backup System"
+        KS[Kopia Server]
+        KC[Kopia Client]
+    end
+
     subgraph "Monitoring Stack"
         subgraph "Real-time Metrics"
             KE[Kopia Exporter] -->|Export| P[Prometheus]
@@ -22,21 +27,19 @@ graph TB
         subgraph "Enterprise Monitoring"
             ZS[Scripts] -->|Check| Z[Zabbix]
             Z -->|Generate| ZA[Alerts]
-            Z -->|Monitor| ZM[Metrics DB]
-        end
-
-        subgraph "Health Checks"
-            HC[Health Checker] -->|Monitor| KE
-            HC -->|Monitor| P
-            HC -->|Monitor| G
-            HC -->|Monitor| Z
         end
     end
+
+    KS -->|Server Metrics| KE
+    KC -->|Client Metrics| KE
+    KS -->|Status| ZS
+    KC -->|Status| ZS
 
     style P fill:#f9f,stroke:#333
     style G fill:#bbf,stroke:#333    
     style Z fill:#bfb,stroke:#333
-    style HC fill:#fbb,stroke:#333
+    style KS fill:#fdb,stroke:#333
+    style KC fill:#fdb,stroke:#333
 ```
 
 ## 🚀 Components
