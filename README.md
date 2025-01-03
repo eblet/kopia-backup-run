@@ -50,7 +50,7 @@ graph TB
 - Docker Compose 2.0+
 - 2GB RAM minimum
 - 10GB disk space
-- NFS server access
+- NFS server access (tested with Synology NAS)
 ```
 
 #### Server Installation
@@ -125,13 +125,13 @@ DOCKER_VOLUMES='{
         "name": "app-config",
         "tags": ["type:config"],
         "compression": "zstd-max",
-        "priority": 2
+        "priority": 1
     }
     "/path/to/data2": {
         "name": "app-data2",
         "tags": ["type:data2", "app:myapp2"],
         "compression": "zstd-fastest",
-        "priority": 1
+        "priority": 2
     },
 }'
 ```
