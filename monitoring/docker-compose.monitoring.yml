@@ -51,11 +51,10 @@ services:
       - "prometheus.io/port=${KOPIA_EXPORTER_PORT:-9091}"
       - "prometheus.io/path=/metrics"
     restart: unless-stopped
-    profiles: &exporter_profiles
+    profiles:
       - base-metrics
       - grafana-local
       - grafana-external
-      - zabbix-local
       - zabbix-external
       - grafana-zabbix-external
       - prometheus-external
@@ -78,7 +77,15 @@ services:
       - "prometheus.io/port=${NODE_EXPORTER_PORT:-9100}"
       - "prometheus.io/path=/metrics"
     restart: unless-stopped
-    profiles: *exporter_profiles
+    profiles:
+      - base-metrics
+      - grafana-local
+      - grafana-external
+      - zabbix-external
+      - grafana-zabbix-external
+      - prometheus-external
+      - all-external
+      - full-stack
 
   zabbix-agent:
     image: zabbix/zabbix-agent2:${ZABBIX_VERSION:-latest}
@@ -86,17 +93,18 @@ services:
     hostname: ${KOPIA_CLIENT_HOSTNAME:-kopia-agent}
     environment:
       - ZBX_SERVER_HOST=${ZABBIX_SERVER_HOST:-zabbix-server}
+      - ZBX_SERVER_PORT=${ZABBIX_SERVER_PORT:-10051}
       - ZBX_HOSTNAME=${KOPIA_CLIENT_HOSTNAME:-kopia-agent}
+      - ZBX_AGENT_PORT=${ZABBIX_AGENT_PORT:-10050}
     volumes:
       - ${ZABBIX_EXTERNAL_SCRIPTS:-/usr/lib/zabbix/externalscripts}:/usr/lib/zabbix/externalscripts:ro
       - ${ZABBIX_AGENT_CONFIG:-/etc/zabbix/zabbix_agentd.d}:/etc/zabbix/zabbix_agentd.d:ro
     ports:
-      - "10050:10050"
+      - "${ZABBIX_AGENT_PORT:-10050}:10050"
     networks:
       - monitoring_network
     restart: unless-stopped
     profiles:
-      - zabbix-local
       - zabbix-external
       - grafana-zabbix-external
       - all-external

@@ -142,20 +142,14 @@ GRAFANA_URL=http://your-grafana:3000
 GRAFANA_API_KEY=your-api-key
 ```
 
-5. 🔍 Local Zabbix Integration
-```bash
-MONITORING_PROFILE=zabbix-local
-ZABBIX_SERVER_PORT=10051
-```
-
-6. 🌍 External Zabbix Integration
+5. 🌍 External Zabbix Integration
 ```bash
 MONITORING_PROFILE=zabbix-external
 ZABBIX_SERVER_HOST=your-zabbix-server
 ZABBIX_URL=http://your-zabbix/api_jsonrpc.php
 ```
 
-7. 📡 External Prometheus Integration
+6. 📡 External Prometheus Integration
 ```bash
 MONITORING_PROFILE=prometheus-external
 PROMETHEUS_SCRAPE=true
@@ -163,7 +157,7 @@ KOPIA_EXPORTER_PORT=9091
 NODE_EXPORTER_PORT=9100
 ```
 
-8. 🌟 Multiple External Services
+7. 🌟 Multiple External Services
 ```bash
 # For Grafana + Zabbix + Prometheus
 MONITORING_PROFILE=all-external

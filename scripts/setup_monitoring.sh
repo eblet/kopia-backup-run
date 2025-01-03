@@ -610,20 +610,23 @@ check_monitoring_profile() {
     log "INFO" "Detected monitoring profile: ${profile}"
     
     # Validate profile
-    case "${profile}" in
-        "none")
-            log "INFO" "No monitoring will be deployed"
-            exit 0
-            ;;
-        "base-metrics"|"grafana-local"|"grafana-external"|"zabbix-local"|"zabbix-external"|"grafana-zabbix-external"|"full-stack")
-            log "INFO" "Using valid monitoring profile: ${profile}"
-            ;;
-        *)
-            log "ERROR" "Invalid monitoring profile: ${profile}"
-            log "INFO" "Valid profiles: none, base-metrics, grafana-local, grafana-external, zabbix-local, zabbix-external, grafana-zabbix-external, full-stack"
-            exit 1
-            ;;
-    esac
+    local valid_profiles=(
+        "none"
+        "base-metrics"
+        "grafana-local"
+        "grafana-external"
+        "zabbix-external"
+        "prometheus-external"
+        "grafana-zabbix-external"
+        "all-external"
+        "full-stack"
+    )
+    
+    if [[ ! " ${valid_profiles[@]} " =~ " ${profile} " ]]; then
+        log "ERROR" "Invalid monitoring profile: ${profile}"
+        log "INFO" "Valid profiles: none, base-metrics, grafana-local, grafana-external, zabbix-external, prometheus-external, grafana-zabbix-external, all-external, full-stack"
+        exit 1
+    fi
 }
 
 validate_environment() {
@@ -663,12 +666,6 @@ validate_environment() {
             required_vars+=(
                 "GRAFANA_URL"
                 "GRAFANA_API_KEY"
-            )
-            ;;
-        "zabbix-local"|"full-stack")
-            required_vars+=(
-                "ZABBIX_SERVER_PORT"
-                "ZABBIX_WEB_PORT"
             )
             ;;
         "zabbix-external"|"grafana-zabbix-external")

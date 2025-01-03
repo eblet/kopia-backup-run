@@ -133,9 +133,6 @@ Deploys:
 ```bash
 # 📊 Grafana Local
 MONITORING_PROFILE=grafana-local
-
-# 🔍 Zabbix Local
-MONITORING_PROFILE=zabbix-local
 ```
 
 ### 3. 🌐 External Services
@@ -286,4 +283,4 @@ docker image prune -f
 > 🎯 Designed for flexibility and scalability.
 
 ## 📄 License
-MIT 
+MIT
