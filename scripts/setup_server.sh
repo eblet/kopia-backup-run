@@ -312,9 +312,87 @@ create_docker_network() {
     fi
 }
 
+check_nfs_connection() {
+    log "INFO" "Checking NFS connection..."
+    
+    # Check if NAS is reachable
+    if ! ping -c 1 "${NAS_IP}" > /dev/null 2>&1; then
+        log "ERROR" "Cannot reach NAS at ${NAS_IP}"
+        return 1
+    fi
+    
+    # Check if NFS port is available
+    if ! nc -z -w5 "${NAS_IP}" 2049; then
+        log "ERROR" "NFS port (2049) is not accessible on ${NAS_IP}"
+        return 1
+    fi
+    
+    # Check if mountpoint exists
+    if [ ! -d "${NAS_MOUNT_PATH:-/mnt/nas}" ]; then
+        log "ERROR" "Mount point ${NAS_MOUNT_PATH:-/mnt/nas} does not exist"
+        return 1
+    fi
+    
+    # Check if already mounted
+    if mountpoint -q "${NAS_MOUNT_PATH:-/mnt/nas}"; then
+        log "INFO" "NFS is already mounted at ${NAS_MOUNT_PATH:-/mnt/nas}"
+        
+        # Check write permissions
+        if ! touch "${NAS_MOUNT_PATH:-/mnt/nas}/.kopia_test" 2>/dev/null; then
+            log "ERROR" "Cannot write to NFS mount point"
+            return 1
+        fi
+        rm -f "${NAS_MOUNT_PATH:-/mnt/nas}/.kopia_test"
+        
+        # Check available space
+        local available_space=$(df -P "${NAS_MOUNT_PATH:-/mnt/nas}" | tail -1 | awk '{print $4}')
+        if [ "${available_space}" -lt 1048576 ]; then  # Less than 1GB
+            log "WARN" "Less than 1GB space available on NFS share"
+        fi
+        
+        return 0
+    fi
+    
+    log "ERROR" "NFS is not mounted"
+    return 1
+}
+
+setup_nfs() {
+    log "INFO" "Setting up NFS mount..."
+    
+    # Create mount point
+    mkdir -p "${NAS_MOUNT_PATH:-/mnt/nas}"
+    
+    # Mount NFS with specific options
+    if ! mount -t nfs -o vers=3,proto=tcp,nolock "${NAS_IP}:${NAS_SHARE}" "${NAS_MOUNT_PATH:-/mnt/nas}"; then
+        log "ERROR" "Failed to mount NFS share"
+        return 1
+    fi
+    
+    # Add to fstab if not already there
+    if ! grep -q "${NAS_IP}:${NAS_SHARE}" /etc/fstab; then
+        echo "${NAS_IP}:${NAS_SHARE} ${NAS_MOUNT_PATH:-/mnt/nas} nfs vers=3,proto=tcp,nolock 0 0" >> /etc/fstab
+        log "INFO" "Added NFS mount to fstab"
+    fi
+    
+    # Verify mount with detailed check
+    if ! check_nfs_connection; then
+        log "ERROR" "NFS mount verification failed"
+        return 1
+    fi
+    
+    log "INFO" "NFS setup completed successfully"
+}
+
 # Main function
 main() {
     log "INFO" "Starting Kopia server setup..."
+    
+    # Setup NFS before starting the server
+    setup_nfs || {
+        log "ERROR" "NFS setup failed"
+        exit 1
+    }
     
     # Run checks
     check_required_vars
@@ -327,23 +405,27 @@ main() {
     initialize_repository
     create_systemd_services
     
-    # Start server
-    log "INFO" "Starting Kopia server..."
-    if [ -f .env ]; then
-        set -a
-        source .env
-        set +a
-        docker compose -f docker/docker-compose.server.yml up -d
-    else
-        log "ERROR" ".env file not found"
-        exit 1
-    fi
+    log "INFO" "Checking services status..."
     
-    # After server start
-    if [ ! -f "${KOPIA_BASE_DIR}/.initialized" ]; then
-        log "INFO" "Initializing Kopia repository..."
-        ./scripts/init_repository.sh
-        touch "${KOPIA_BASE_DIR}/.initialized"
+    # Check Kopia server status
+    log "INFO" "Kopia server status:"
+    systemctl status kopia-server.service
+    
+    # Check NAS sync timer status
+    log "INFO" "NAS sync timer status:"
+    systemctl status kopia-nas-sync.timer
+    
+    # Start Kopia server
+    log "INFO" "Starting Kopia server..."
+    docker compose -f docker/docker-compose.server.yml up -d
+    
+    # Final NFS check
+    if check_nfs_connection; then
+        log "INFO" "NFS/NAS connection verified: ${NAS_IP}:${NAS_SHARE} mounted at ${NAS_MOUNT_PATH:-/mnt/nas}"
+        log "INFO" "Available space: $(df -h ${NAS_MOUNT_PATH:-/mnt/nas} | awk 'NR==2 {print $4}')"
+    else
+        log "ERROR" "NFS/NAS connection check failed at final verification"
+        exit 1
     fi
     
     log "INFO" "Kopia server setup completed successfully"
