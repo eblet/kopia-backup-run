@@ -219,15 +219,22 @@ ZABBIX_SERVER_HOST=your-zabbix
 4. External Grafana + External Zabbix
 ```bash
 MONITORING_PROFILE=grafana-zabbix-external
+
 # Required settings:
 GRAFANA_ENABLED=true
 GRAFANA_EXTERNAL=true
 GRAFANA_URL=http://your-grafana:3000
 GRAFANA_API_KEY=your-api-key
+
 ZABBIX_ENABLED=true
 ZABBIX_EXTERNAL=true
 ZABBIX_URL=http://your-zabbix/api_jsonrpc.php
 ZABBIX_SERVER_HOST=your-zabbix
+
+# Deploy monitoring
+./scripts/setup_monitoring.sh
+# OR
+docker compose -f monitoring/docker-compose.monitoring.yml up -d
 ```
 
 5. Full Stack

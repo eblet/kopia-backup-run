@@ -195,9 +195,12 @@ Requires=docker.service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/docker compose -f ${PWD}/docker/docker-compose.server.yml up
-ExecStop=/usr/bin/docker compose -f ${PWD}/docker/docker-compose.server.yml down
+WorkingDirectory=${PWD}
+ExecStartPre=-/usr/bin/docker compose -f docker/docker-compose.server.yml down
+ExecStart=/usr/bin/docker compose -f docker/docker-compose.server.yml up
+ExecStop=/usr/bin/docker compose -f docker/docker-compose.server.yml down
 Restart=always
+RestartSec=10
 User=root
 
 [Install]
@@ -282,6 +285,33 @@ EOF
     systemctl status kopia-nas-sync.timer --no-pager || true
 }
 
+# Create Docker network
+create_docker_network() {
+    log "INFO" "Setting up Docker network..."
+    
+    # Check if network exists
+    if docker network inspect kopia_network >/dev/null 2>&1; then
+        log "INFO" "Network kopia_network already exists"
+        # Remove network if it has incorrect labels
+        if ! docker network inspect kopia_network | grep -q '"com.docker.compose.network": "kopia_network"'; then
+            log "WARN" "Network has incorrect labels, recreating..."
+            docker network rm kopia_network
+            docker network create \
+                --driver bridge \
+                --label com.docker.compose.network=kopia_network \
+                --label com.docker.compose.project=kopia \
+                kopia_network
+        fi
+    else
+        log "INFO" "Creating network kopia_network..."
+        docker network create \
+            --driver bridge \
+            --label com.docker.compose.network=kopia_network \
+            --label com.docker.compose.project=kopia \
+            kopia_network
+    fi
+}
+
 # Main function
 main() {
     log "INFO" "Starting Kopia server setup..."
@@ -293,6 +323,7 @@ main() {
     
     # Setup
     create_directories
+    create_docker_network
     initialize_repository
     create_systemd_services
     

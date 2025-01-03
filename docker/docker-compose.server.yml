@@ -43,8 +43,14 @@ services:
     labels:
       - "com.kopia.version=${KOPIA_VERSION:-latest}"
       - "com.kopia.type=server"
+      - "com.docker.compose.project=kopia"
+      - "com.docker.compose.service=server"
 
 networks:
   kopia_network:
     name: ${KOPIA_NETWORK_NAME:-kopia_network}
     driver: bridge
+    external: true
+    labels:
+      - "com.docker.compose.network=kopia_network"
+      - "com.docker.compose.project=kopia"
