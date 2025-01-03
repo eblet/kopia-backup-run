@@ -3,13 +3,13 @@ set -euo pipefail
 
 # Enhanced logging with colors
 log() {
-    local level=$1
-    local message=$2
+    local level="${1:-INFO}"
+    local message="${2:-No message provided}"
     local color=""
     case $level in
-        "INFO") color="\033[0;32m" ;;  # Green
-        "WARN") color="\033[1;33m" ;;  # Yellow
-        "ERROR") color="\033[0;31m" ;; # Red
+        "INFO") color="\033[0;32m" ;;
+        "WARN") color="\033[1;33m" ;;
+        "ERROR") color="\033[0;31m" ;;
     esac
     echo -e "${color}[$(date '+%Y-%m-%d %H:%M:%S')] [${level}] ${message}\033[0m"
 }
@@ -358,7 +358,7 @@ determine_monitoring_profile() {
             profile="grafana-local"
             ;;
         "none:local")
-            profile="zabbix-local"
+            profile="zabbix-local"  
             ;;
         "local:local")
             profile="full-stack"

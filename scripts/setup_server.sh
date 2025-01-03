@@ -18,11 +18,17 @@ if [ ! -f .env ]; then
 fi
 source .env
 
-# Enhanced logging function with levels
+# Enhanced logging with colors
 log() {
-    local level=$1
-    local message=$2
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [${level}] ${message}"
+    local level="${1:-INFO}"
+    local message="${2:-No message provided}"
+    local color=""
+    case $level in
+        "INFO") color="\033[0;32m" ;;  # Green
+        "WARN") color="\033[1;33m" ;;  # Yellow
+        "ERROR") color="\033[0;31m" ;; # Red
+    esac
+    echo -e "${color}[$(date '+%Y-%m-%d %H:%M:%S')] [${level}] ${message}\033[0m"
 }
 
 # Check software versions

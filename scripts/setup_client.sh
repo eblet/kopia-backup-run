@@ -1,6 +1,19 @@
 #!/bin/bash
 set -euo pipefail
 
+# Enhanced logging with colors
+log() {
+    local level="${1:-INFO}"
+    local message="${2:-No message provided}"
+    local color=""
+    case $level in
+        "INFO") color="\033[0;32m" ;;
+        "WARN") color="\033[1;33m" ;;
+        "ERROR") color="\033[0;31m" ;;
+    esac
+    echo -e "${color}[$(date '+%Y-%m-%d %H:%M:%S')] [${level}] ${message}\033[0m"
+}
+
 # Find required binaries
 DOCKER_BIN=$(which docker) || { echo "ERROR: docker not found"; exit 1; }
 DOCKER_COMPOSE_BIN=$(which docker-compose) || { echo "ERROR: docker-compose not found"; exit 1; }
@@ -16,13 +29,6 @@ if [ ! -f .env ]; then
     exit 1
 fi
 source .env
-
-# Logging function with timestamps and levels
-log() {
-    local level=$1
-    local message=$2
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [${level}] ${message}"
-}
 
 # Check versions
 check_versions() {
