@@ -181,6 +181,13 @@ ZABBIX_CLIENT_ENABLED=true      # Enable client monitoring
 ZABBIX_SERVER_HOST=zabbix.local # Zabbix server hostname
 KOPIA_CLIENT_HOSTNAME=myapp-01   # Custom hostname (optional)
 
+### Available Metrics
+- 📈 Backup size and duration
+- 💾 Repository status
+- 🔄 Sync status
+- 📊 System resources
+
+
 # Deploy only Zabbix agent on client machine
 ./scripts/setup_client.sh
 # OR
@@ -261,39 +268,6 @@ MONITORING_PROFILE=full-stack
 - Prometheus + Exporters
 - Local Grafana
 - Local Zabbix
-```
-
-## Deploy monitoring stack
-```bash
-sudo ./scripts/setup_monitoring.sh
-# OR
-docker compose -f monitoring/docker-compose.monitoring.yml up -d
-```
-
-## 🔧 Monitoring Options
-
-### 1. Basic Monitoring
-```bash
-# Server status
-docker logs kopia-server
-docker exec kopia-server kopia repository status
-```
-
-### 2. Enterprise Monitoring
-Enable full monitoring stack:
-```bash
-# Edit .env
-MONITORING_TYPE=all  # all, zabbix, prometheus, none
-
-# Deploy
-./scripts/setup_monitoring.sh
-```
-
-### 3. Available Metrics
-- 📈 Backup size and duration
-- 💾 Repository status
-- 🔄 Sync status
-- 📊 System resources
 
 # Access dashboards
 - Grafana: http://localhost:3000
