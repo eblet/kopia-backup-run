@@ -130,6 +130,7 @@ graph TB
 # Clone repository
 git clone https://github.com/eblet/kopia-backup-stack
 cd kopia-backup-stack
+chmod +x scripts/*
 
 # Initial configuration
 cp .env.example .env
