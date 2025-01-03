@@ -47,17 +47,6 @@ curl http://localhost:9091/-/ready
   node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes
   ```
 - **Disk Usage:**
-# 📊 Prometheus Stack for Kopia
-
-## 📋 Overview
-Real-time metrics collection and visualization for Kopia Backup System:
-- 🔍 Custom metrics exporter for Kopia
-- 📈 Pre-configured Grafana dashboards
-- 🚨 Intelligent alert rules
-- 📊 System resource monitoring
-
-## 🏗️ Components
-
   ```promql
   node_filesystem_free_bytes
   ```
@@ -73,27 +62,6 @@ Real-time metrics collection and visualization for Kopia Backup System:
 # prometheus.yml
 global:
   scrape_interval: 15s
-### 1. Kopia Exporter
-
-#### Overview
-Custom Python-based exporter that collects Kopia-specific metrics:
-```python
-# Example metric collection
-def collect_backup_metrics():
-    return {
-        'kopia_backup_duration_seconds': duration,
-        'kopia_backup_size_bytes': size,
-        'kopia_snapshot_count': count
-    }
-```
-
-#### Available Endpoints
-```bash
-# Metrics endpoint
-curl http://localhost:9091/metrics
-
-# Health check
-curl http://localhost:9091/-/healthy
   evaluation_interval: 15s
 
 scrape_configs:
@@ -116,38 +84,6 @@ groups:
     rules:
       - alert: KopiaBackupFailed
         expr: kopia_backup_status == 0
-
-# Ready check
-curl http://localhost:9091/-/ready
-```
-
-### 2. Node Exporter
-
-#### System Metrics
-- **CPU Usage:**
-  ```promql
-  rate(node_cpu_seconds_total{mode="user"}[5m])
-  ```
-- **Memory Usage:**
-  ```promql
-  node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes
-  ```
-- **Disk Usage:**
-  ```promql
-  node_filesystem_free_bytes
-  ```
-- **Network Stats:**
-  ```promql
-  rate(node_network_transmit_bytes_total[5m])
-  ```
-
-### 3. Prometheus Configuration
-
-#### Main Config
-```yaml
-# prometheus.yml
-global:
-  scrape_interval: 15s
         for: 5m
         labels:
           severity: critical
@@ -161,18 +97,6 @@ global:
 - **Panels:**
   - Backup Success Rate
   - Backup Duration Trend
-  evaluation_interval: 15s
-
-scrape_configs:
-  - job_name: 'kopia'
-    static_configs:
-      - targets: ['kopia-exporter:9091']
-    metrics_path: '/metrics'
-    scheme: 'http'
-
-  - job_name: 'node'
-    static_configs:
-      - targets: ['node-exporter:9100']
   - Repository Size Growth
   - Latest Backup Status
 
@@ -202,21 +126,6 @@ scrape_configs:
 | GRAFANA_PORT | Web interface port | 3000 | 3000 |
 | GRAFANA_ADMIN_PASSWORD | Admin password | admin | secure-password |
 | GRAFANA_PLUGINS | Additional plugins | - | grafana-piechart-panel |
-```
-
-#### Alert Rules
-```yaml
-# rules/kopia_alerts.yml
-groups:
-  - name: kopia_alerts
-    rules:
-      - alert: KopiaBackupFailed
-        expr: kopia_backup_status == 0
-        for: 5m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Backup operation failed"
 
 ### Data Source Configuration
 ```yaml
@@ -235,34 +144,6 @@ datasources:
 ### Kopia Metrics
 | Metric | Type | Description | Labels |
 |--------|------|-------------|--------|
-```
-
-### 4. Grafana Dashboards
-
-#### Backup Overview Dashboard
-- **Panels:**
-  - Backup Success Rate
-  - Backup Duration Trend
-  - Repository Size Growth
-  - Latest Backup Status
-
-#### System Resources Dashboard
-- **Panels:**
-  - CPU Usage
-  - Memory Consumption
-  - Disk Space
-  - Network Traffic
-
-## 🔧 Configuration
-
-### Environment Variables
-
-#### Prometheus Settings
-| Variable | Description | Default | Example |
-|----------|-------------|---------|---------|
-| PROMETHEUS_UI_PORT | Web interface port | 9090 | 9090 |
-| PROMETHEUS_DATA_DIR | Data directory | /var/lib/prometheus | /data/prometheus |
-| PROMETHEUS_RETENTION | Data retention | 15d | 30d |
 | kopia_backup_duration_seconds | Gauge | Backup duration | path, status |
 | kopia_backup_size_bytes | Gauge | Total backup size | path |
 | kopia_snapshot_count | Gauge | Number of snapshots | type |
@@ -283,15 +164,6 @@ datasources:
 ```bash
 # Check Prometheus targets
 curl -s http://localhost:9090/api/v1/targets | jq .
-| PROMETHEUS_CPU_LIMIT | CPU limit | 1 | 2 |
-| PROMETHEUS_MEM_LIMIT | Memory limit | 2G | 4G |
-
-#### Grafana Settings
-| Variable | Description | Default | Example |
-|----------|-------------|---------|---------|
-| GRAFANA_PORT | Web interface port | 3000 | 3000 |
-| GRAFANA_ADMIN_PASSWORD | Admin password | admin | secure-password |
-| GRAFANA_PLUGINS | Additional plugins | - | grafana-piechart-panel |
 
 # Test Kopia exporter
 curl -s http://localhost:9091/metrics
@@ -306,24 +178,6 @@ docker exec kopia-prometheus promtool check config /etc/prometheus/prometheus.ym
 du -sh ${PROMETHEUS_DATA_DIR}
 
 # Verify permissions
-
-### Data Source Configuration
-```yaml
-# datasources/prometheus.yaml
-apiVersion: 1
-datasources:
-  - name: Prometheus
-    type: prometheus
-    access: proxy
-    url: http://prometheus:9090
-    isDefault: true
-```
-
-## 📊 Available Metrics
-
-### Kopia Metrics
-| Metric | Type | Description | Labels |
-|--------|------|-------------|--------|
 ls -l ${PROMETHEUS_DATA_DIR}
 
 # Clean old data
@@ -337,10 +191,6 @@ curl -G --data-urlencode 'query=up' http://localhost:9090/api/v1/query
 
 # Check query performance
 curl http://localhost:9090/api/v1/query_stats
-| kopia_backup_duration_seconds | Gauge | Backup duration | path, status |
-| kopia_backup_size_bytes | Gauge | Total backup size | path |
-| kopia_snapshot_count | Gauge | Number of snapshots | type |
-| kopia_repository_size_bytes | Gauge | Repository size | - |
 ```
 
 ### Debugging Tips
@@ -358,17 +208,6 @@ global:
 # Raw metrics
 curl -s http://localhost:9091/metrics | grep kopia_
 
-### System Metrics
-| Metric | Type | Description | Labels |
-|--------|------|-------------|--------|
-| node_cpu_seconds_total | Counter | CPU time | cpu, mode |
-| node_memory_MemAvailable_bytes | Gauge | Available memory | - |
-| node_filesystem_free_bytes | Gauge | Free disk space | device, mountpoint |
-
-## 🛠 Troubleshooting
-
-### Common Issues
-
 # Processed metrics
 curl -s http://localhost:9090/api/v1/query?query=kopia_backup_status
 ```
@@ -380,18 +219,6 @@ docker exec kopia-prometheus promtool check config /etc/prometheus/prometheus.ym
 
 # Test alert rules
 docker exec kopia-prometheus promtool check rules /etc/prometheus/rules/*.yml
-
-1. Metrics Collection
-```bash
-# Check Prometheus targets
-curl -s http://localhost:9090/api/v1/targets | jq .
-
-# Test Kopia exporter
-curl -s http://localhost:9091/metrics
-
-# Verify scrape config
-docker exec kopia-prometheus promtool check config /etc/prometheus/prometheus.yml
-```
 ```
 
 ## 🔒 Security
@@ -410,23 +237,6 @@ docker exec kopia-prometheus promtool check config /etc/prometheus/prometheus.ym
 
 ## 📚 Additional Resources
 - [Prometheus Documentation](https://prometheus.io/docs/)
-
-2. Storage Issues
-```bash
-# Check disk usage
-du -sh ${PROMETHEUS_DATA_DIR}
-
-# Verify permissions
-ls -l ${PROMETHEUS_DATA_DIR}
-
-# Clean old data
-docker exec kopia-prometheus prometheus clean tombstones
-```
-
-3. Query Problems
-```bash
-# Test PromQL query
-curl -G --data-urlencode 'query=up' http://localhost:9090/api/v1/query
 - [PromQL Examples](https://prometheus.io/docs/prometheus/latest/querying/examples/)
 - [Grafana Documentation](https://grafana.com/docs/)
-- [Node Exporter](https://github.com/prometheus/node_exporter) 
+- [Node Exporter](https://github.com/prometheus/node_exporter)
