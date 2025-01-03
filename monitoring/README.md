@@ -17,17 +17,27 @@ graph TB
             NE[Node Exporter] -->|System Metrics| P
             P -->|Store| PD[(Prometheus DB)]
             P -->|Query| G[Grafana]
+            G -->|Alert| GA[Grafana Alerts]
         end
 
         subgraph "Enterprise Monitoring"
             ZS[Scripts] -->|Check| Z[Zabbix]
             Z -->|Generate| ZA[Alerts]
+            Z -->|Monitor| ZM[Metrics DB]
+        end
+
+        subgraph "Health Checks"
+            HC[Health Checker] -->|Monitor| KE
+            HC -->|Monitor| P
+            HC -->|Monitor| G
+            HC -->|Monitor| Z
         end
     end
 
     style P fill:#f9f,stroke:#333
     style G fill:#bbf,stroke:#333    
     style Z fill:#bfb,stroke:#333
+    style HC fill:#fbb,stroke:#333
 ```
 
 ## 🚀 Components
