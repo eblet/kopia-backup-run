@@ -29,17 +29,21 @@ log() {
 check_versions() {
     log "INFO" "Checking software versions..."
     
-    # Check Docker version
-    if ! docker --version | grep -q "20.10"; then
-        log "ERROR" "Docker version 20.10 or higher is required"
+    # Check if Docker is installed
+    if ! command -v docker >/dev/null 2>&1; then
+        log "ERROR" "Docker is not installed"
         exit 1
     fi
     
-    # Check Docker Compose version
-    if ! docker compose version | grep -q "v2"; then
-        log "ERROR" "Docker Compose V2 is required"
+    # Check if Docker Compose is installed
+    if ! docker compose version >/dev/null 2>&1; then
+        log "ERROR" "Docker Compose V2 is not installed"
         exit 1
     fi
+    
+    # Just log versions for information
+    log "INFO" "Docker version: $(docker --version)"
+    log "INFO" "Docker Compose version: $(docker compose version)"
 }
 
 # Enhanced system requirements check
