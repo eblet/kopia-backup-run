@@ -409,11 +409,11 @@ main() {
     
     # Check Kopia server status
     log "INFO" "Kopia server status:"
-    systemctl status kopia-server.service
+    systemctl status kopia-server.service --no-pager || true
     
     # Check NAS sync timer status
     log "INFO" "NAS sync timer status:"
-    systemctl status kopia-nas-sync.timer
+    systemctl status kopia-nas-sync.timer --no-pager || true
     
     # Start Kopia server
     log "INFO" "Starting Kopia server..."
