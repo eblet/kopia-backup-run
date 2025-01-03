@@ -8,43 +8,40 @@ x-logging: &default-logging
 
 services:
   kopia-server:
-    image: ghcr.io/thespad/kopia-server:latest
+    image: kopia/kopia:latest
     hostname: kopia-server
     container_name: kopia-server
-    cap_add:
-      - SYS_ADMIN
     environment:
       - PUID=${PUID:-1000}
       - PGID=${PGID:-1000}
       - TZ=${TZ:-UTC}
       - KOPIA_HTTPS=${KOPIA_TLS_ENABLED:-false}
-      - KOPIA_UI_USERNAME=${KOPIA_SERVER_USERNAME:-admin}
-      - KOPIA_UI_PASSWORD=${KOPIA_SERVER_PASSWORD:-admin}
       - KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD:-change-me-please}
-      - KOPIA_REPOSITORY_PATH=/repository
     volumes:
-      - ${KOPIA_BASE_DIR:-/var/lib/kopia}:/config
-      - ${KOPIA_CACHE_DIR:-/var/cache/kopia}:/cache
-      - ${KOPIA_LOG_DIR:-/var/log/kopia}:/logs
+      - ${KOPIA_BASE_DIR:-/var/lib/kopia}:/app/config
+      - ${KOPIA_CACHE_DIR:-/var/cache/kopia}:/app/cache
+      - ${KOPIA_LOG_DIR:-/var/log/kopia}:/app/logs
       - /tmp:/tmp:shared
       - ${NAS_MOUNT_PATH:-/mnt/nas}:/repository
-    devices:
-      - /dev/fuse:/dev/fuse:rwm
     ports:
       - "${KOPIA_SERVER_PORT:-51515}:51515"
     networks:
       - kopia_network
     restart: unless-stopped
+    command: [
+      "server", "start",
+      "--address=0.0.0.0:51515",
+      "--server-username=${KOPIA_SERVER_USERNAME:-admin}",
+      "--server-password=${KOPIA_SERVER_PASSWORD:-admin}",
+      "--insecure",
+      "--without-password"
+    ]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:51515/api/v1/repo/status"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD", "pgrep", "kopia"]
+      interval: 5s
+      timeout: 3s
       retries: 3
-      start_period: 10s
-    logging: *default-logging
-    labels:
-      - "com.kopia.version=${KOPIA_VERSION:-latest}"
-      - "com.kopia.type=server"
+      start_period: 5s
 
 networks:
   kopia_network:
