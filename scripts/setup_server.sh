@@ -339,6 +339,13 @@ main() {
         exit 1
     fi
     
+    # After server start
+    if [ ! -f "${KOPIA_BASE_DIR}/.initialized" ]; then
+        log "INFO" "Initializing Kopia repository..."
+        ./scripts/init_repository.sh
+        touch "${KOPIA_BASE_DIR}/.initialized"
+    fi
+    
     log "INFO" "Kopia server setup completed successfully"
 }
 

@@ -8,49 +8,45 @@ x-logging: &default-logging
 
 services:
   kopia-server:
-    image: kopia/kopia:${KOPIA_VERSION:-latest}
+    image: ghcr.io/thespad/kopia-server:latest
+    hostname: kopia-server
     container_name: kopia-server
-    volumes:
-      - ${KOPIA_BASE_DIR:-/var/lib/kopia}:${KOPIA_BASE_DIR:-/var/lib/kopia}:rw
-      - ${NAS_MOUNT_PATH:-/mnt/nas}:${NAS_MOUNT_PATH:-/mnt/nas}:rw
-      - ${KOPIA_LOG_DIR:-/var/log/kopia}:${KOPIA_LOG_DIR:-/var/log/kopia}:rw
-      - ${KOPIA_CACHE_DIR:-/var/cache/kopia}:${KOPIA_CONTAINER_CACHE_DIR:-/app/cache}:rw
+    cap_add:
+      - SYS_ADMIN
     environment:
-      - KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD}
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
       - TZ=${TZ:-UTC}
-    command: >
-      server start
-      --address 0.0.0.0:${KOPIA_SERVER_PORT:-51515}
-      --server-username ${KOPIA_SERVER_USERNAME}
-      --server-password ${KOPIA_SERVER_PASSWORD}
-      ${KOPIA_SECURE_MODE:+--tls-generate-cert}
-      ${KOPIA_SECURE_MODE:-"--insecure"}
-      ${KOPIA_SERVER_ALLOWED_IPS:+--server-control-access=${KOPIA_SERVER_ALLOWED_IPS}}
-      --server-cache-directory=${KOPIA_CONTAINER_CACHE_DIR:-/app/cache}
-      --max-upload-speed=${KOPIA_UPLOAD_LIMIT:-0}
-      --max-download-speed=${KOPIA_DOWNLOAD_LIMIT:-0}
+      - KOPIA_HTTPS=${KOPIA_TLS_ENABLED:-false}
+      - KOPIA_UI_USERNAME=${KOPIA_SERVER_USERNAME:-admin}
+      - KOPIA_UI_PASSWORD=${KOPIA_SERVER_PASSWORD:-admin}
+      - KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD:-change-me-please}
+      - KOPIA_REPOSITORY_PATH=/repository
+    volumes:
+      - ${KOPIA_BASE_DIR:-/var/lib/kopia}:/config
+      - ${KOPIA_CACHE_DIR:-/var/cache/kopia}:/cache
+      - ${KOPIA_LOG_DIR:-/var/log/kopia}:/logs
+      - /tmp:/tmp:shared
+      - ${NAS_MOUNT_PATH:-/mnt/nas}:/repository
+    devices:
+      - /dev/fuse:/dev/fuse:rwm
     ports:
-      - "${KOPIA_SERVER_PORT:-51515}:${KOPIA_SERVER_PORT:-51515}"
+      - "${KOPIA_SERVER_PORT:-51515}:51515"
     networks:
       - kopia_network
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '${KOPIA_SERVER_CPU_LIMIT:-2}'
-          memory: ${KOPIA_SERVER_MEM_LIMIT:-2G}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:51515/api/v1/repo/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     logging: *default-logging
     labels:
       - "com.kopia.version=${KOPIA_VERSION:-latest}"
       - "com.kopia.type=server"
-      - "com.docker.compose.project=kopia"
-      - "com.docker.compose.service=server"
 
 networks:
   kopia_network:
     name: ${KOPIA_NETWORK_NAME:-kopia_network}
     driver: bridge
-    external: true
-    labels:
-      - "com.docker.compose.network=kopia_network"
-      - "com.docker.compose.project=kopia"
