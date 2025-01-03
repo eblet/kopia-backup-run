@@ -40,18 +40,24 @@ services:
       dockerfile: Dockerfile
     container_name: kopia-exporter
     environment:
-      - KOPIA_SERVER_URL=${KOPIA_SERVER_URL:-http://kopia-server}:${KOPIA_SERVER_PORT:-51515}
+      - KOPIA_SERVER_URL=https://${KOPIA_SERVER_HOST:-kopia-server}:${KOPIA_SERVER_PORT:-51515}
       - KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD:-password}
-      - KOPIA_CONFIG_PATH=/app/config
+      - KOPIA_CONFIG_FILE=/app/config/repository.config
       - KOPIA_CACHE_DIRECTORY=/app/cache
       - KOPIA_LOG_DIR=/app/logs
       - KOPIA_CHECK_FOR_UPDATES=false
       - KOPIA_PERSIST_CREDENTIALS_ON_CONNECT=true
       - TZ=UTC
     volumes:
-      - kopia_exporter_config:/app/config
-      - kopia_exporter_cache:/app/cache
-      - kopia_exporter_logs:/app/logs
+      - type: bind
+        source: ${KOPIA_CONFIG_DIR:-./kopia/config}
+        target: /app/config
+      - type: volume
+        source: kopia_exporter_cache
+        target: /app/cache
+      - type: volume
+        source: kopia_exporter_logs
+        target: /app/logs
     ports:
       - "9091:9091"
     networks:
