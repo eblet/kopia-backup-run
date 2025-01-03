@@ -85,7 +85,7 @@ sudo apt-get install -y docker.io docker-compose curl nfs-common jq
 ## 🚀 Quick Start
 ```bash
 # Clone repository
-git clone https://github.com/your-repo/kopia-backup-stack.git
+git clone https://github.com/eblet/kopia-backup-stack.git
 cd kopia-backup-stack
 
 # Configure environment
