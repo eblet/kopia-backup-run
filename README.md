@@ -170,8 +170,8 @@ GRAFANA_API_KEY=your-api-key
 
 ZABBIX_ENABLED=true
 ZABBIX_EXTERNAL=true
-ZABBIX_URL=http://your-zabbix/api_jsonrpc.php
-ZABBIX_SERVER_HOST=your-zabbix-server
+ZABBIX_URL=http://zabbix-server.com/api_jsonrpc.php
+ZABBIX_SERVER_HOST=zabbix-server.com
 
 PROMETHEUS_EXTERNAL=true
 PROMETHEUS_SCRAPE=true
@@ -181,6 +181,16 @@ PROMETHEUS_SCRAPE=true
 ```bash
 # After configuring .env
 ./scripts/setup_monitoring.sh
+```
+
+## 📁️ Client Setup
+
+### 🔄 Connect to Existing Server
+```bash
+# Run client setup
+./scripts/setup_client.sh
+
+# Follow interactive prompts to connect to the server and configure backups
 ```
 
 ## 📁 Directory Structure

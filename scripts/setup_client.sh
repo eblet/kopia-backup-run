@@ -10,348 +10,169 @@ log() {
         "INFO") color="\033[0;32m" ;;
         "WARN") color="\033[1;33m" ;;
         "ERROR") color="\033[0;31m" ;;
+        "PROMPT") color="\033[0;36m" ;;
     esac
     echo -e "${color}[$(date '+%Y-%m-%d %H:%M:%S')] [${level}] ${message}\033[0m"
 }
 
-# Find required binaries
-DOCKER_BIN=$(which docker) || { echo "ERROR: docker not found"; exit 1; }
-DOCKER_COMPOSE_BIN=$(which docker-compose) || { echo "ERROR: docker-compose not found"; exit 1; }
-JQ_BIN=$(which jq) || { echo "ERROR: jq not found"; exit 1; }
-
-# Version requirements
-REQUIRED_DOCKER_VERSION="20.10.0"
-REQUIRED_COMPOSE_VERSION="2.0.0"
-
-# Load environment variables
-if [ ! -f .env ]; then
-    echo "ERROR: .env file not found"
-    exit 1
-fi
-source .env
-
-# Check versions
-check_versions() {
-    log "INFO" "Checking software versions..."
+prompt_user() {
+    local message="$1"
+    local default="${2:-}"
+    local response
     
-    # Check Docker version
-    local docker_version=$($DOCKER_BIN version --format '{{.Server.Version}}')
-    if ! printf '%s\n%s\n' "${REQUIRED_DOCKER_VERSION}" "${docker_version}" | sort -C -V; then
-        log "ERROR" "Docker version ${docker_version} is less than required ${REQUIRED_DOCKER_VERSION}"
-        exit 1
-    fi
-
-    # Check Docker Compose version
-    local compose_version=$($DOCKER_COMPOSE_BIN version --short)
-    if ! printf '%s\n%s\n' "${REQUIRED_COMPOSE_VERSION}" "${compose_version}" | sort -C -V; then
-        log "ERROR" "Docker Compose version ${compose_version} is less than required ${REQUIRED_COMPOSE_VERSION}"
-        exit 1
+    if [ -n "$default" ]; then
+        read -p "$(log "PROMPT" "$message [$default]: ")" response
+        echo "${response:-$default}"
+    else
+        read -p "$(log "PROMPT" "$message: ")" response
+        echo "$response"
     fi
 }
 
-# Validate environment variables
-validate_env() {
-    log "Validating environment variables..."
+prompt_password() {
+    local message="$1"
+    local password
     
-    local required_vars=(
-        "KOPIA_REPO_PASSWORD"
-        "KOPIA_SERVER_USERNAME"
-        "KOPIA_SERVER_PASSWORD"
-        "KOPIA_SERVER_IP"
-        "KOPIA_SERVER_PORT"
-        "KOPIA_CONFIG_DIR"
-        "KOPIA_CACHE_DIR"
-        "DOCKER_VOLUMES"
+    read -s -p "$(log "PROMPT" "$message: ")" password
+    echo
+    echo "$password"
+}
+
+check_dependencies() {
+    log "INFO" "Checking dependencies..."
+    
+    local required_packages=(
+        "kopia"
+        "curl"
+        "jq"
     )
-
-    for var in "${required_vars[@]}"; do
-        if [ -z "${!var}" ]; then
-            log "ERROR: Required variable $var is not set"
-            exit 1
-        fi
-    done
-
-    # Validate password requirements
-    if [[ ${#KOPIA_REPO_PASSWORD} -lt 16 ]]; then
-        log "ERROR: KOPIA_REPO_PASSWORD must be at least 16 characters"
-        exit 1
-    fi
-
-    if [[ ${#KOPIA_SERVER_PASSWORD} -lt 16 ]]; then
-        log "ERROR: KOPIA_SERVER_PASSWORD must be at least 16 characters"
-        exit 1
-    fi
-
-    # Validate port number
-    if ! [[ "${KOPIA_SERVER_PORT}" =~ ^[0-9]+$ ]] || \
-       [ "${KOPIA_SERVER_PORT}" -lt 1 ] || \
-       [ "${KOPIA_SERVER_PORT}" -gt 65535 ]; then
-        log "ERROR: Invalid KOPIA_SERVER_PORT value (must be between 1-65535)"
-        exit 1
-    fi
-}
-
-# Validate volumes configuration
-validate_volumes_config() {
-    log "Validating volumes configuration..."
     
-    if ! command -v jq &> /dev/null; then
-        log "ERROR: jq is required but not installed"
-        exit 1
-    fi
-
-    # Validate JSON structure
-    if ! echo "${DOCKER_VOLUMES}" | jq empty; then
-        log "ERROR: Invalid JSON format in DOCKER_VOLUMES"
-        exit 1
-    }
-
-    # Validate each volume configuration
-    echo "${DOCKER_VOLUMES}" | jq -r 'to_entries[]' | while read -r volume; do
-        local path=$(echo "$volume" | jq -r '.key')
-        local config=$(echo "$volume" | jq -r '.value')
-
-        # Check required fields
-        if ! echo "$config" | jq -e '.name and .tags' > /dev/null; then
-            log "ERROR: Volume $path missing required fields (name, tags)"
-            exit 1
-        fi
-
-        # Validate path exists
-        if [ ! -d "$path" ]; then
-            log "ERROR: Directory $path does not exist"
-            exit 1
-        }
-
-        # Validate compression if specified
-        local compression=$(echo "$config" | jq -r '.compression // "zstd-fastest"')
-        if [[ ! "$compression" =~ ^(zstd-fastest|zstd-default|zstd-max)$ ]]; then
-            log "ERROR: Invalid compression setting for $path: $compression"
+    for package in "${required_packages[@]}"; do
+        if ! command -v "$package" >/dev/null 2>&1; then
+            log "ERROR" "$package is required but not installed"
             exit 1
         fi
     done
 }
 
-# Setup directories
-setup_dirs() {
-    log "Creating required directories..."
-    local dirs=(
-        "${KOPIA_CONFIG_DIR}"
-        "${KOPIA_CACHE_DIR}"
-        "${KOPIA_LOG_DIR}"
-    )
-
-    for dir in "${dirs[@]}"; do
-        if [ ! -d "$dir" ]; then
-            mkdir -p "$dir"
-            chmod 750 "$dir"
-        fi
-    done
-}
-
-# Check server connection
-check_server() {
-    local protocol="${KOPIA_SECURE_MODE:+https://}${KOPIA_SECURE_MODE:-http://}"
-    local server_url="${protocol}${KOPIA_SERVER_IP}:${KOPIA_SERVER_PORT}"
-    local max_retries=3
-    local retry_delay=5
-
-    log "Checking server connection at ${server_url}..."
+connect_to_server() {
+    local server_host
+    local server_port
+    local username
+    local password
+    local repo_password
     
-    for ((i=1; i<=max_retries; i++)); do
-        if curl -sf "${server_url}/api/v1/repo/status" &>/dev/null; then
-            log "Server connection successful"
-            return 0
-        fi
-        log "Connection attempt $i failed, retrying in ${retry_delay}s..."
-        sleep "${retry_delay}"
-    done
-
-    log "ERROR: Cannot connect to Kopia server at ${server_url} after ${max_retries} attempts"
-    exit 1
-}
-
-# Run backup process
-run_backup() {
-    log "Starting backup process..."
+    log "INFO" "Setting up connection to Kopia server..."
     
-    local temp_compose="docker-compose.client.generated.yml"
-    cp docker/docker-compose.client.yml "${temp_compose}"
+    # Get server details
+    server_host=$(prompt_user "Enter Kopia server hostname/IP" "localhost")
+    server_port=$(prompt_user "Enter Kopia server port" "51515")
+    username=$(prompt_user "Enter username")
+    password=$(prompt_password "Enter password")
+    repo_password=$(prompt_password "Enter repository password")
     
-    # Sort volumes by priority and process them
-    echo "${DOCKER_VOLUMES}" | jq -r 'to_entries | sort_by(.value.priority // 999) | .[]' | \
-    while read -r volume; do
-        local path=$(echo "$volume" | jq -r '.key')
-        local config=$(echo "$volume" | jq -r '.value')
-        local name=$(echo "$config" | jq -r '.name')
-        local tags=$(echo "$config" | jq -r '.tags | join(",")')
-        local compression=$(echo "$config" | jq -r '.compression // "zstd-fastest"')
+    # Test server connection
+    if ! curl -s "http://${server_host}:${server_port}/api/v1/repo/status" >/dev/null; then
+        log "ERROR" "Cannot connect to Kopia server at ${server_host}:${server_port}"
+        exit 1
+    fi
+    
+    # Connect to repository
+    log "INFO" "Connecting to repository..."
+    kopia repository connect server \
+        --url="http://${server_host}:${server_port}" \
+        --username="$username" \
+        --password="$password" \
+        --override-hostname="$(hostname)" \
+        --password-file=<(echo "$repo_password")
         
-        log "Processing backup for $path ($name)"
-        
-        # Add volume mount to compose file
-        echo "      - ${path}:${path}:ro" >> "${temp_compose}"
-        
-        # Execute backup
-        if ! docker-compose -f "${temp_compose}" run --rm kopia-backup \
-            snapshot create "${path}" \
-            --tags="${tags}" \
-            --compression="${compression}" \
-            --parallel="${KOPIA_PARALLEL_CLIENT:-4}"; then
-            log "ERROR: Backup failed for $path"
-            cleanup_and_exit 1
-        fi
-
-        # Verify backup if enabled
-        if [ "${BACKUP_VERIFY:-true}" = "true" ]; then
-            log "Verifying backup for $path"
-            if ! docker-compose -f "${temp_compose}" run --rm kopia-backup \
-                snapshot verify "${path}"; then
-                log "ERROR: Verification failed for $path"
-                cleanup_and_exit 1
-            fi
-        fi
-    done
-
-    cleanup_and_exit 0
+    log "INFO" "Successfully connected to repository"
 }
 
-# Cleanup function
-cleanup_and_exit() {
-    local exit_code=$1
-    rm -f docker-compose.client.generated.yml
-    exit "${exit_code}"
-}
-
-# Verify backup integrity
-verify_backup_integrity() {
-    # Логика проверки
-}
-
-# Check system requirements
-check_system_requirements() {
-    log "Checking system requirements..."
-
-    # Check Docker
-    if ! command -v docker &> /dev/null; then
-        log "ERROR: Docker is not installed"
-        exit 1
-    fi
-
-    # Check Docker Compose
-    if ! command -v docker-compose &> /dev/null; then
-        log "ERROR: Docker Compose is not installed"
-        exit 1
-    fi
-
-    # Check available disk space
-    local required_space=5120  # 5GB in MB
-    local available_space=$(df -m "${KOPIA_CONFIG_DIR}" | awk 'NR==2 {print $4}')
-    if [ "${available_space}" -lt "${required_space}" ]; then
-        log "WARNING: Less than 5GB free space available in ${KOPIA_CONFIG_DIR}"
-    fi
-
-    # Check memory
-    local min_memory=1024  # 1GB in MB
-    local available_memory=$(free -m | awk '/^Mem:/{print $2}')
-    if [ "${available_memory}" -lt "${min_memory}" ]; then
-        log "WARNING: System has less than 1GB RAM"
-    fi
-}
-
-# Check disk space for logs
-check_log_space() {
-    log "INFO" "Checking available space for logs..."
-    local required_space=1024  # 1GB in MB
-    local available_space=$(df -m "${KOPIA_LOG_DIR}" | awk 'NR==2 {print $4}')
+setup_backup_policies() {
+    log "INFO" "Setting up backup policies..."
     
-    if [ "${available_space}" -lt "${required_space}" ]; then
-        log "WARNING" "Less than 1GB free space available for logs in ${KOPIA_LOG_DIR}"
-    fi
-}
-
-# Check permissions
-check_permissions() {
-    log "INFO" "Checking directory permissions..."
-    local dirs=(
-        "${KOPIA_CONFIG_DIR}"
-        "${KOPIA_CACHE_DIR}"
-        "${KOPIA_LOG_DIR}"
-    )
-
-    for dir in "${dirs[@]}"; do
-        if [ ! -w "$dir" ]; then
-            log "ERROR" "Directory $dir is not writable"
-            exit 1
-        fi
+    # Ask for backup paths
+    local backup_paths=()
+    while true; do
+        local path=$(prompt_user "Enter path to backup (or 'done' to finish)")
+        [ "$path" = "done" ] && break
+        backup_paths+=("$path")
     done
+    
+    # Ask for schedule
+    local schedule=$(prompt_user "Enter backup schedule (e.g., '@daily', '@hourly', '0 */4 * * *')" "@daily")
+    
+    # Create snapshot policy
+    for path in "${backup_paths[@]}"; do
+        log "INFO" "Creating policy for $path"
+        kopia policy set "$path" \
+            --compression=zstd \
+            --snapshot-time-schedule="$schedule" \
+            --keep-latest=30 \
+            --keep-hourly=24 \
+            --keep-daily=7 \
+            --keep-weekly=4 \
+            --keep-monthly=6
+    done
+    
+    log "INFO" "Backup policies configured successfully"
 }
 
-# Setup monitoring
 setup_monitoring() {
-    if [ "${ZABBIX_AGENT_ENABLED:-false}" = "true" ] && [ "${ZABBIX_CLIENT_ENABLED:-false}" = "true" ]; then
-        log "INFO" "Setting up Zabbix agent for client..."
+    log "INFO" "Setting up monitoring..."
+    
+    local setup_monitoring=$(prompt_user "Would you like to set up monitoring? (yes/no)" "yes")
+    if [[ "$setup_monitoring" =~ ^[Yy]([Ee][Ss])?$ ]]; then
+        # Copy monitoring configuration
+        cp .env.example .env
         
-        # Validate required variables
-        local required_vars=(
-            "ZABBIX_SERVER_HOST"
-            "ZABBIX_EXTERNAL_SCRIPTS"
-            "ZABBIX_AGENT_CONFIG"
-        )
+        # Get Zabbix server details
+        ZABBIX_SERVER_HOST=$(prompt_user "Enter Zabbix server hostname")
+        ZABBIX_SERVER_PORT=$(prompt_user "Enter Zabbix server port" "10051")
+        KOPIA_CLIENT_HOSTNAME=$(prompt_user "Enter client hostname in Zabbix" "$(hostname)")
         
-        for var in "${required_vars[@]}"; do
-            if [ -z "${!var}" ]; then
-                log "ERROR" "Required variable $var is not set"
-                exit 1
-            fi
-        done
+        # Update .env file
+        sed -i "s/^ZABBIX_SERVER_HOST=.*/ZABBIX_SERVER_HOST=$ZABBIX_SERVER_HOST/" .env
+        sed -i "s/^ZABBIX_SERVER_PORT=.*/ZABBIX_SERVER_PORT=$ZABBIX_SERVER_PORT/" .env
+        sed -i "s/^KOPIA_CLIENT_HOSTNAME=.*/KOPIA_CLIENT_HOSTNAME=$KOPIA_CLIENT_HOSTNAME/" .env
         
-        # Create required directories
-        sudo mkdir -p "${ZABBIX_EXTERNAL_SCRIPTS}"
-        sudo mkdir -p "${ZABBIX_AGENT_CONFIG}"
-        
-        # Copy monitoring scripts
-        sudo cp monitoring/zabbix/scripts/* "${ZABBIX_EXTERNAL_SCRIPTS}/"
-        sudo chmod +x "${ZABBIX_EXTERNAL_SCRIPTS}"/*
-        
-        # Copy agent configuration
-        sudo cp monitoring/zabbix/config/zabbix_agentd.d/* "${ZABBIX_AGENT_CONFIG}/"
-        
-        # Start Zabbix agent
-        docker-compose -f docker/docker-compose.zabbix_agent.yml up -d
-        
-        # Verify agent is running
-        if ! docker ps | grep -q kopia-client-zabbix-agent; then
-            log "ERROR" "Failed to start Zabbix agent"
-            exit 1
-        fi
-        
-        log "INFO" "Zabbix agent setup completed"
+        # Setup monitoring
+        ./scripts/setup_monitoring.sh
     fi
 }
 
-# Main execution
-main() {
-    log "INFO" "Starting Kopia client backup process..."
+verify_setup() {
+    log "INFO" "Verifying setup..."
     
-    check_versions
-    check_system_requirements
-    check_log_space
-    check_permissions
-    validate_env
-    setup_dirs
-    validate_volumes_config
-    check_server
-    run_backup
-
-    # Setup monitoring if enabled
-    setup_monitoring
-
-    log "INFO" "Backup process completed successfully"
+    # Check repository connection
+    if ! kopia repository status >/dev/null 2>&1; then
+        log "ERROR" "Repository connection failed"
+        exit 1
+    fi
+    
+    # Test backup
+    local test_backup=$(prompt_user "Would you like to run a test backup? (yes/no)" "yes")
+    if [[ "$test_backup" =~ ^[Yy]([Ee][Ss])?$ ]]; then
+        local test_path=$(prompt_user "Enter path for test backup" "/etc/hosts")
+        kopia snapshot create "$test_path"
+        log "INFO" "Test backup completed successfully"
+    fi
 }
 
-# Trap for cleanup with logging
-trap 'log "ERROR" "Script interrupted"; cleanup_and_exit 1' INT TERM
+main() {
+    log "INFO" "Starting Kopia client setup..."
+    
+    check_dependencies
+    connect_to_server
+    setup_backup_policies
+    setup_monitoring
+    verify_setup
+    
+    log "INFO" "Kopia client setup completed successfully"
+    log "INFO" "You can now use 'kopia snapshot create' to create backups"
+}
 
-# Run main function
+# Run main with error handling
+trap 'log "ERROR" "Script failed on line $LINENO"' ERR
 main "$@"
