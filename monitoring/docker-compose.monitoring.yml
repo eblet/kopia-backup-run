@@ -167,6 +167,31 @@ services:
       <<: *monitoring-labels
       com.kopia.component: node-exporter
 
+  zabbix-agent:
+    image: zabbix/zabbix-agent2:${ZABBIX_VERSION:-latest}
+    container_name: kopia-zabbix-agent
+    profiles:
+      - zabbix
+      - all
+    environment:
+      - ZBX_SERVER_HOST=${ZABBIX_SERVER_HOST}
+      - ZBX_HOSTNAME=${HOSTNAME}
+    volumes:
+      - ${ZABBIX_EXTERNAL_SCRIPTS}:/usr/lib/zabbix/externalscripts:ro
+      - ${ZABBIX_AGENT_CONFIG}:/etc/zabbix/zabbix_agentd.d:ro
+    ports:
+      - "10050:10050"
+    networks:
+      - monitoring_network
+      - kopia_network
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
+    labels:
+      <<: *monitoring-labels
+      com.kopia.component: zabbix-agent
+
 volumes:
   prometheus_data:
     name: ${PROMETHEUS_VOLUME_NAME:-kopia_prometheus_data}

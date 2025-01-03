@@ -77,6 +77,12 @@ graph TB
 - Escalation procedures
 - Multi-tenant support
 
+#### External Zabbix Server
+- Set `ZABBIX_EXTERNAL=true`
+- Configure `ZABBIX_SERVER_HOST`
+- Only agent and scripts will be deployed
+- Metrics will be sent to external Zabbix server
+
 ## 🔧 Configuration Reference
 
 ### Environment Variables

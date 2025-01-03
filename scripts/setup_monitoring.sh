@@ -101,7 +101,48 @@ setup_prometheus() {
 
 setup_zabbix() {
     log "INFO" "Setting up Zabbix monitoring..."
-    (cd monitoring/zabbix && ./setup.sh)
+    
+    if [ "${ZABBIX_EXTERNAL:-false}" = "true" ]; then
+        log "INFO" "Using external Zabbix server at ${ZABBIX_SERVER_HOST}"
+        
+        # Проверка доступности Zabbix сервера
+        if ! ping -c 1 "${ZABBIX_SERVER_HOST}" &>/dev/null; then
+            log "ERROR" "Cannot reach Zabbix server at ${ZABBIX_SERVER_HOST}"
+            exit 1
+        fi
+        
+        # Настройка только агента и скриптов
+        setup_zabbix_agent
+        setup_zabbix_scripts
+    else
+        # Полная локальная установка
+        (cd monitoring/zabbix && ./setup.sh)
+    fi
+}
+
+setup_zabbix_agent() {
+    log "INFO" "Setting up Zabbix agent..."
+    
+    # Создаем директории для скриптов
+    mkdir -p "${ZABBIX_EXTERNAL_SCRIPTS}"
+    chmod 755 "${ZABBIX_EXTERNAL_SCRIPTS}"
+    
+    # Копируем конфигурацию агента
+    mkdir -p "${ZABBIX_AGENT_CONFIG}"
+    cp monitoring/zabbix/config/zabbix_agentd.d/* "${ZABBIX_AGENT_CONFIG}/"
+    
+    # Запускаем только агента
+    docker-compose -f monitoring/docker-compose.monitoring.yml up -d zabbix-agent
+}
+
+setup_zabbix_scripts() {
+    log "INFO" "Setting up Zabbix monitoring scripts..."
+    
+    # Копируем скрипты мониторинга
+    cp monitoring/zabbix/scripts/* "${ZABBIX_EXTERNAL_SCRIPTS}/"
+    chmod +x "${ZABBIX_EXTERNAL_SCRIPTS}"/*
+    
+    log "INFO" "Zabbix scripts installed in ${ZABBIX_EXTERNAL_SCRIPTS}"
 }
 
 # Generate Grafana API key
