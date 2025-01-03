@@ -83,6 +83,146 @@ graph TB
 - Only agent and scripts will be deployed
 - Metrics will be sent to external Zabbix server
 
+### 3. External Monitoring Integration
+
+#### 3.1. Configure external Grafana:
+```bash
+# In .env file
+GRAFANA_EXTERNAL=true
+GRAFANA_URL=http://your-grafana:3000
+GRAFANA_API_KEY=your-api-key
+```
+
+#### 3.2. Add Prometheus data source in external Grafana:
+1. Login to your Grafana instance
+2. Go to Configuration -> Data Sources
+3. Click "Add data source"
+4. Select "Prometheus"
+5. Configure the data source:
+```yaml
+# Basic Settings
+Name: Kopia-Prometheus
+Default: false  # Unless you want it as default
+
+# HTTP Settings
+URL: http://your-kopia-server:9090  # Your Prometheus server URL
+Access: Server (default)  # or Browser if needed
+Scrape interval: 15s
+
+# Auth Settings (if needed)
+Basic auth: Enable if required
+User: your-user
+Password: your-password
+
+# TLS/SSL Settings
+TLS Client Auth: Enable if using TLS
+Skip TLS Verify: Only in dev environments
+```
+6. Click "Save & Test"
+
+#### 3.3. Add Zabbix data source in external Grafana:
+1. Install Zabbix plugin if not installed:
+   - Go to Configuration -> Plugins
+   - Search for "Zabbix"
+   - Install "Zabbix" by Alexander Zobnin
+
+2. Add Zabbix data source:
+   - Go to Configuration -> Data Sources
+   - Click "Add data source"
+   - Search and select "Zabbix"
+
+3. Configure Zabbix data source:
+```yaml
+# Basic Settings
+Name: Kopia-Zabbix
+Default: false
+
+# HTTP Settings
+URL: http://your-zabbix:80/api_jsonrpc.php  # Zabbix API URL
+Access: Server (default)
+
+# Zabbix API Settings
+Username: ${ZABBIX_USERNAME}
+Password: ${ZABBIX_PASSWORD}
+
+# Advanced Settings
+Trends: Enable
+  From: 7d
+  Range: 4d
+Cache TTL: 1h
+Timeout: 30s
+```
+
+4. Direct API Configuration (alternative):
+```bash
+# Using curl to add datasource
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${GRAFANA_API_KEY}" \
+  http://your-grafana:3000/api/datasources \
+  -d '{
+    "name": "Kopia-Zabbix",
+    "type": "alexanderzobnin-zabbix-datasource",
+    "url": "http://your-zabbix:80/api_jsonrpc.php",
+    "access": "proxy",
+    "jsonData": {
+      "username": "Admin",
+      "trendsFrom": "7d",
+      "trendsRange": "4d",
+      "cacheTTL": "1h"
+    },
+    "secureJsonData": {
+      "password": "your-zabbix-password"
+    }
+  }'
+```
+
+#### 3.4. Import dashboards:
+1. Download dashboard JSONs:
+   - Copy files from monitoring/prometheus/dashboards/
+   - Or download from Grafana.com marketplace
+
+2. Import via Grafana UI:
+   - Go to Dashboards -> Import
+   - Upload JSON file or paste JSON content
+   - Select:
+     - Kopia-Prometheus for metrics dashboards
+     - Kopia-Zabbix for Zabbix dashboards
+   - Click "Import"
+
+3. Import via API:
+```bash
+# Using curl to import dashboard
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${GRAFANA_API_KEY}" \
+  http://your-grafana:3000/api/dashboards/db \
+  -d @monitoring/prometheus/dashboards/kopia-overview.json
+```
+
+#### 3.5. Verify Integration:
+1. Check Prometheus data:
+```bash
+# Test Prometheus API
+curl -s http://your-kopia-server:9090/api/v1/query?query=up
+
+# Check targets
+curl -s http://your-kopia-server:9090/api/v1/targets | jq .
+```
+
+2. Check Zabbix data:
+```bash
+# Test Zabbix API
+curl -s -H "Content-Type: application/json" \
+     -d '{"jsonrpc":"2.0","method":"apiinfo.version","id":1}' \
+     http://your-zabbix:80/api_jsonrpc.php
+```
+
+3. Verify in Grafana:
+   - Check "Data Sources" page for connection status
+   - Use "Explore" to test queries
+   - Check dashboard panels for data flow
+
 ## 🔧 Configuration Reference
 
 ### Environment Variables

@@ -105,17 +105,17 @@ setup_zabbix() {
     if [ "${ZABBIX_EXTERNAL:-false}" = "true" ]; then
         log "INFO" "Using external Zabbix server at ${ZABBIX_SERVER_HOST}"
         
-        # Проверка доступности Zabbix сервера
+        # Check Zabbix server availability
         if ! ping -c 1 "${ZABBIX_SERVER_HOST}" &>/dev/null; then
             log "ERROR" "Cannot reach Zabbix server at ${ZABBIX_SERVER_HOST}"
             exit 1
         fi
         
-        # Настройка только агента и скриптов
+        # Setup agent and scripts only
         setup_zabbix_agent
         setup_zabbix_scripts
     else
-        # Полная локальная установка
+        # Full local installation
         (cd monitoring/zabbix && ./setup.sh)
     fi
 }
@@ -123,22 +123,22 @@ setup_zabbix() {
 setup_zabbix_agent() {
     log "INFO" "Setting up Zabbix agent..."
     
-    # Создаем директории для скриптов
+    # Create script directories
     mkdir -p "${ZABBIX_EXTERNAL_SCRIPTS}"
     chmod 755 "${ZABBIX_EXTERNAL_SCRIPTS}"
     
-    # Копируем конфигурацию агента
+    # Copy agent configuration
     mkdir -p "${ZABBIX_AGENT_CONFIG}"
     cp monitoring/zabbix/config/zabbix_agentd.d/* "${ZABBIX_AGENT_CONFIG}/"
     
-    # Запускаем только агента
+    # Start agent only
     docker-compose -f monitoring/docker-compose.monitoring.yml up -d zabbix-agent
 }
 
 setup_zabbix_scripts() {
     log "INFO" "Setting up Zabbix monitoring scripts..."
     
-    # Копируем скрипты мониторинга
+    # Copy monitoring scripts
     cp monitoring/zabbix/scripts/* "${ZABBIX_EXTERNAL_SCRIPTS}/"
     chmod +x "${ZABBIX_EXTERNAL_SCRIPTS}"/*
     
@@ -206,62 +206,313 @@ generate_grafana_api_key() {
     log "INFO" "This key will be valid for 10 years"
 }
 
-# Main execution with rollback
-main() {
-    # Create temporary file for tracking progress
-    local progress_file=$(mktemp)
-    trap 'rm -f $progress_file' EXIT
-
-    log "INFO" "Starting monitoring setup..."
+setup_external_monitoring() {
+    log "INFO" "Setting up external monitoring integration..."
     
-    # Check requirements first
-    check_dependencies || exit 1
-    check_disk_space || exit 1
-    echo "dependencies_checked" > "$progress_file"
+    # Validate external monitoring configuration
+    local external_config_valid=true
+    
+    # Check Grafana configuration
+    if [ "${GRAFANA_EXTERNAL:-false}" = "true" ]; then
+        log "INFO" "Validating external Grafana configuration..."
+        
+        # Required variables
+        local grafana_vars=(
+            "GRAFANA_URL"
+            "GRAFANA_API_KEY"
+        )
+        
+        for var in "${grafana_vars[@]}"; do
+            if [ -z "${!var}" ]; then
+                log "ERROR" "Required variable $var is not set for external Grafana"
+                external_config_valid=false
+            fi
+        done
+        
+        # Test Grafana connectivity
+        if ! curl -sf -H "Authorization: Bearer ${GRAFANA_API_KEY}" \
+             "${GRAFANA_URL}/api/health" &>/dev/null; then
+            log "ERROR" "Cannot connect to Grafana at ${GRAFANA_URL} with provided API key"
+            external_config_valid=false
+        else
+            log "INFO" "Successfully connected to external Grafana at ${GRAFANA_URL}"
+            
+            # Configure Prometheus datasource in Grafana
+            log "INFO" "Configuring Prometheus datasource in Grafana..."
+            curl -sf -X POST \
+                -H "Authorization: Bearer ${GRAFANA_API_KEY}" \
+                -H "Content-Type: application/json" \
+                "${GRAFANA_URL}/api/datasources" \
+                -d '{
+                    "name": "Kopia-Prometheus",
+                    "type": "prometheus",
+                    "url": "http://'${KOPIA_SERVER_IP}':'${PROMETHEUS_UI_PORT}'",
+                    "access": "proxy",
+                    "basicAuth": false
+                }' || log "WARN" "Failed to configure Prometheus datasource"
+        fi
+    fi
+    
+    # Check Zabbix configuration
+    if [ "${ZABBIX_EXTERNAL:-false}" = "true" ]; then
+        log "INFO" "Validating external Zabbix configuration..."
+        
+        # Required variables
+        local zabbix_vars=(
+            "ZABBIX_URL"
+            "ZABBIX_SERVER_HOST"
+            "ZABBIX_USERNAME"
+            "ZABBIX_PASSWORD"
+        )
+        
+        for var in "${zabbix_vars[@]}"; do
+            if [ -z "${!var}" ]; then
+                log "ERROR" "Required variable $var is not set for external Zabbix"
+                external_config_valid=false
+            fi
+        done
+        
+        # Test Zabbix connectivity
+        if ! ping -c 1 "${ZABBIX_SERVER_HOST}" &>/dev/null; then
+            log "ERROR" "Cannot reach Zabbix server at ${ZABBIX_SERVER_HOST}"
+            external_config_valid=false
+        else
+            log "INFO" "Successfully reached Zabbix server at ${ZABBIX_SERVER_HOST}"
+            
+            # Test Zabbix API
+            if ! curl -sf -H "Content-Type: application/json" \
+                 -d '{"jsonrpc":"2.0","method":"apiinfo.version","id":1}' \
+                 "${ZABBIX_URL}" &>/dev/null; then
+                log "ERROR" "Cannot connect to Zabbix API at ${ZABBIX_URL}"
+                external_config_valid=false
+            else
+                log "INFO" "Successfully connected to Zabbix API"
+            fi
+        fi
+    fi
+    
+    # Exit if any external configuration is invalid
+    if [ "$external_config_valid" = "false" ]; then
+        log "ERROR" "External monitoring configuration validation failed"
+        exit 1
+    fi
+    
+    # Deploy appropriate monitoring components
+    if [ "${GRAFANA_EXTERNAL:-false}" = "true" ] && [ "${ZABBIX_EXTERNAL:-false}" = "true" ]; then
+        log "INFO" "Deploying monitoring stack with external Grafana and Zabbix..."
+        docker-compose -f monitoring/docker-compose.monitoring.yml \
+            --profile prometheus up -d
+    elif [ "${GRAFANA_EXTERNAL:-false}" = "true" ]; then
+        log "INFO" "Deploying monitoring stack with external Grafana..."
+        docker-compose -f monitoring/docker-compose.monitoring.yml \
+            --profile prometheus up -d
+    elif [ "${ZABBIX_EXTERNAL:-false}" = "true" ]; then
+        log "INFO" "Deploying monitoring stack with external Zabbix..."
+        docker-compose -f monitoring/docker-compose.monitoring.yml \
+            --profile prometheus --profile local-grafana up -d
+    fi
+    
+    log "INFO" "External monitoring integration completed"
+}
 
-    # Setup monitoring based on type
-    case "${MONITORING_TYPE:-none}" in
-        "all")
-            if ! setup_prometheus; then
-                log "ERROR" "Prometheus setup failed"
-                [ -f "$progress_file" ] && rollback
-                exit 1
-            fi
-            echo "prometheus_setup" >> "$progress_file"
-
-            if ! setup_zabbix; then
-                log "ERROR" "Zabbix setup failed"
-                [ -f "$progress_file" ] && rollback
-                exit 1
-            fi
-            echo "zabbix_setup" >> "$progress_file"
+# Check Grafana configuration
+determine_monitoring_profile() {
+    local profile=""
+    
+    # Check Grafana configuration
+    local grafana_mode="none"
+    if [ "${GRAFANA_ENABLED:-false}" = "true" ]; then
+        if [ "${GRAFANA_EXTERNAL:-false}" = "true" ]; then
+            grafana_mode="external"
+        else
+            grafana_mode="local"
+        fi
+    fi
+    
+    # Check Zabbix configuration
+    local zabbix_mode="none"
+    if [ "${ZABBIX_ENABLED:-false}" = "true" ]; then
+        if [ "${ZABBIX_EXTERNAL:-false}" = "true" ]; then
+            zabbix_mode="external"
+        else
+            zabbix_mode="local"
+        fi
+    fi
+    
+    # Determine required profile based on combination
+    case "${grafana_mode}:${zabbix_mode}" in
+        "none:none")
+            profile="metrics-only"
             ;;
-        "prometheus")
-            if ! setup_prometheus; then
-                log "ERROR" "Prometheus setup failed"
-                [ -f "$progress_file" ] && rollback
-                exit 1
-            fi
+        "local:none")
+            profile="with-local-grafana"
             ;;
-        "zabbix")
-            if ! setup_zabbix; then
-                log "ERROR" "Zabbix setup failed"
-                [ -f "$progress_file" ] && rollback
-                exit 1
-            fi
+        "none:local")
+            profile="with-local-zabbix"
             ;;
-        "none")
-            log "INFO" "Monitoring disabled"
-            exit 0
+        "local:local")
+            profile="full-local"
+            ;;
+        "external:external"|"external:local"|"local:external")
+            # If at least one service is external, use special profiles
+            if [ "$grafana_mode" = "external" ]; then
+                profile="metrics-only"  # Only Prometheus and exporters
+            else
+                profile="with-local-grafana"
+            fi
+            if [ "$zabbix_mode" = "local" ]; then
+                profile="${profile},with-local-zabbix"
+            elif [ "$zabbix_mode" = "external" ]; then
+                profile="${profile},with-external-zabbix"
+            fi
             ;;
         *)
-            log "ERROR" "Invalid MONITORING_TYPE: ${MONITORING_TYPE}"
+            log "ERROR" "Invalid monitoring configuration"
             exit 1
             ;;
     esac
+    
+    echo "$profile"
+}
 
-    verify_deployment
-    log "INFO" "Monitoring setup completed successfully!"
+# Check external services
+verify_external_services() {
+    if [ "${GRAFANA_EXTERNAL:-false}" = "true" ]; then
+        verify_external_grafana
+    fi
+    if [ "${ZABBIX_EXTERNAL:-false}" = "true" ]; then
+        verify_external_zabbix
+    fi
+}
+
+# Deploy monitoring
+deploy_monitoring() {
+    local profile=$(determine_monitoring_profile)
+    
+    log "INFO" "Deploying monitoring with profile: ${profile}"
+    
+    # Start with determined profile
+    if [[ "$profile" == *","* ]]; then
+        # If multiple profiles, split them
+        IFS=',' read -ra PROFILES <<< "$profile"
+        for p in "${PROFILES[@]}"; do
+            docker-compose -f monitoring/docker-compose.monitoring.yml \
+                --profile "$p" up -d
+        done
+    else
+        docker-compose -f monitoring/docker-compose.monitoring.yml \
+            --profile "$profile" up -d
+    fi
+}
+
+# Main installation function
+main() {
+    log "INFO" "Starting monitoring setup..."
+    
+    # Checks
+    check_dependencies
+    check_system_requirements
+    validate_environment
+    
+    # Check external services if needed
+    verify_external_services
+    
+    # Deploy monitoring
+    deploy_monitoring
+    
+    # Configure integrations
+    if [ "${GRAFANA_ENABLED:-false}" = "true" ]; then
+        configure_grafana_integration
+    fi
+    if [ "${ZABBIX_ENABLED:-false}" = "true" ]; then
+        configure_zabbix_integration
+    fi
+    
+    log "INFO" "Monitoring setup completed"
+}
+
+setup_monitoring() {
+    log "INFO" "Setting up monitoring..."
+
+    # Validate monitoring variables
+    if [ "${GRAFANA_EXTERNAL:-false}" = "true" ]; then
+        local required_grafana_vars=(
+            "GRAFANA_URL"
+            "GRAFANA_API_KEY"
+        )
+        
+        for var in "${required_grafana_vars[@]}"; do
+            if [ -z "${!var}" ]; then
+                log "ERROR" "Required variable $var is not set for external Grafana"
+                exit 1
+            fi
+        done
+        
+        # Check Grafana availability
+        if ! curl -sf "${GRAFANA_URL}/api/health" &>/dev/null; then
+            log "ERROR" "Cannot reach Grafana at ${GRAFANA_URL}"
+            exit 1
+        fi
+        log "INFO" "External Grafana is accessible at ${GRAFANA_URL}"
+        
+        # Verify API key works
+        if ! curl -sf -H "Authorization: Bearer ${GRAFANA_API_KEY}" "${GRAFANA_URL}/api/health" &>/dev/null; then
+            log "ERROR" "Invalid Grafana API key"
+            exit 1
+        fi
+        log "INFO" "Grafana API key is valid"
+    fi
+
+    if [ "${ZABBIX_EXTERNAL:-false}" = "true" ]; then
+        local required_zabbix_vars=(
+            "ZABBIX_URL"
+            "ZABBIX_SERVER_HOST"
+            "ZABBIX_USERNAME"
+            "ZABBIX_PASSWORD"
+        )
+        
+        for var in "${required_zabbix_vars[@]}"; do
+            if [ -z "${!var}" ]; then
+                log "ERROR" "Required variable $var is not set for external Zabbix"
+                exit 1
+            fi
+        done
+        
+        # Check Zabbix API availability
+        if ! curl -sf -H "Content-Type: application/json" \
+             -d '{"jsonrpc":"2.0","method":"apiinfo.version","id":1}' \
+             "${ZABBIX_URL}" &>/dev/null; then
+            log "ERROR" "Cannot reach Zabbix API at ${ZABBIX_URL}"
+            exit 1
+        fi
+        log "INFO" "External Zabbix API is accessible at ${ZABBIX_URL}"
+        
+        # Check Zabbix server connectivity
+        if ! ping -c 1 "${ZABBIX_SERVER_HOST}" &>/dev/null; then
+            log "ERROR" "Cannot reach Zabbix server at ${ZABBIX_SERVER_HOST}"
+            exit 1
+        fi
+        log "INFO" "Zabbix server is accessible at ${ZABBIX_SERVER_HOST}"
+    fi
+
+    # Deploy monitoring stack based on configuration
+    if [ "${GRAFANA_EXTERNAL:-false}" = "true" ] && [ "${ZABBIX_EXTERNAL:-false}" = "true" ]; then
+        log "INFO" "Deploying monitoring stack with external Grafana and Zabbix..."
+        docker-compose -f monitoring/docker-compose.monitoring.yml \
+            --profile prometheus up -d
+    elif [ "${GRAFANA_EXTERNAL:-false}" = "true" ]; then
+        log "INFO" "Deploying monitoring stack with external Grafana..."
+        docker-compose -f monitoring/docker-compose.monitoring.yml \
+            --profile prometheus up -d
+    elif [ "${ZABBIX_EXTERNAL:-false}" = "true" ]; then
+        log "INFO" "Deploying monitoring stack with external Zabbix..."
+        docker-compose -f monitoring/docker-compose.monitoring.yml \
+            --profile prometheus --profile local-grafana up -d
+    else
+        log "INFO" "Deploying full monitoring stack..."
+        docker-compose -f monitoring/docker-compose.monitoring.yml \
+            --profile all up -d
+    fi
 }
 
 # Run main with error handling
