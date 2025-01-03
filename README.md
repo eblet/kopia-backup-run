@@ -274,19 +274,19 @@ MONITORING_PROFILE=full-stack
 - Prometheus: http://localhost:9090
 - Zabbix: http://localhost:9090
 
-#### Available Client Metrics
+## Available Client Metrics
 - 📊 Backup status and timing
 - 💾 Backup size and count
 - ❌ Error monitoring
 - 🔄 Sync status
 
-#### Verify Client Monitoring
+## Verify Client Monitoring
 ```bash
 # Check agent status
 docker ps | grep zabbix-agent
 docker logs kopia-client-zabbix-agent
 
-# Test agent connection
+## Test agent connection
 zabbix_get -s localhost -p 10050 -k kopia.client.backup.status
 ```
 
