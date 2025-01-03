@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Find required binaries
 DOCKER_BIN=$(which docker) || { echo "ERROR: docker not found"; exit 1; }
-DOCKER_COMPOSE_BIN=$(which docker-compose) || { echo "ERROR: docker-compose not found"; exit 1; }
+DOCKER_COMPOSE_BIN=$(which docker compose) || { echo "ERROR: docker compose not found"; exit 1; }
 
 # Version requirements
 REQUIRED_DOCKER_VERSION="20.10.0"
@@ -30,16 +30,14 @@ check_versions() {
     log "INFO" "Checking software versions..."
     
     # Check Docker version
-    local docker_version=$($DOCKER_BIN version --format '{{.Server.Version}}')
-    if ! printf '%s\n%s\n' "${REQUIRED_DOCKER_VERSION}" "${docker_version}" | sort -C -V; then
-        log "ERROR" "Docker version ${docker_version} is less than required ${REQUIRED_DOCKER_VERSION}"
+    if ! docker --version | grep -q "20.10"; then
+        log "ERROR" "Docker version 20.10 or higher is required"
         exit 1
     fi
-
+    
     # Check Docker Compose version
-    local compose_version=$($DOCKER_COMPOSE_BIN version --short)
-    if ! printf '%s\n%s\n' "${REQUIRED_COMPOSE_VERSION}" "${compose_version}" | sort -C -V; then
-        log "ERROR" "Docker Compose version ${compose_version} is less than required ${REQUIRED_COMPOSE_VERSION}"
+    if ! docker compose version | grep -q "v2"; then
+        log "ERROR" "Docker Compose V2 is required"
         exit 1
     fi
 }
@@ -55,7 +53,7 @@ check_system_requirements() {
     fi
 
     # Check required packages with version logging
-    local packages=(nfs-common curl docker.io docker-compose)
+    local packages=(nfs-common curl docker.io docker-compose-plugin)
     for pkg in "${packages[@]}"; do
         if ! dpkg -l | grep -q "^ii.*$pkg"; then
             log "INFO" "Installing ${pkg}..."
@@ -234,9 +232,9 @@ Requires=docker.service
 Type=simple
 WorkingDirectory=${PWD}
 Environment=COMPOSE_FILE=docker/docker-compose.server.yml
-ExecStartPre=-/usr/local/bin/docker-compose down
-ExecStart=/usr/local/bin/docker-compose up --remove-orphans
-ExecStop=/usr/local/bin/docker-compose down
+ExecStartPre=-/usr/local/bin/docker compose down
+ExecStart=/usr/local/bin/docker compose up --remove-orphans
+ExecStop=/usr/local/bin/docker compose down
 Restart=always
 RestartSec=10
 

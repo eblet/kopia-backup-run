@@ -77,7 +77,7 @@ NAS_MOUNT_PATH=/mnt/nas
 # Deploy server
 sudo ./scripts/setup_server.sh
 # OR
-docker-compose -f docker/docker-compose.server.yml up -d
+docker compose -f docker/docker-compose.server.yml up -d
 ```
 
 #### Verify Server
@@ -143,7 +143,7 @@ cd /path/to/kopia-backup-stack
 # Using script (recommended)
 sudo ./scripts/setup_client.sh
 # OR 
-docker-compose -f docker/docker-compose.client.yml up -d
+docker compose -f docker/docker-compose.client.yml up -d
 
 # Setup scheduled backup (optional)
 sudo crontab -e
@@ -153,7 +153,7 @@ sudo crontab -e
 0 2 * * * cd /path/to/kopia-backup-stack && ./scripts/kopia_client_docker_run.sh
 
 # OR using docker-compose:
-0 2 * * * cd /path/to/kopia-backup-stack && docker-compose -f docker/docker-compose.client.yml up -d
+0 2 * * * cd /path/to/kopia-backup-stack && docker compose -f docker/docker-compose.client.yml up -d
 ```
 
 #### Verify Backup
@@ -243,7 +243,7 @@ MONITORING_PROFILE=full-stack
 ```bash
 sudo ./scripts/setup_monitoring.sh
 # OR
-docker-compose -f monitoring/docker-compose.monitoring.yml up -d
+docker compose -f monitoring/docker-compose.monitoring.yml up -d
 ```
 
 ## 🔧 Monitoring Options
@@ -286,10 +286,10 @@ ZABBIX_CLIENT_ENABLED=true      # Enable client monitoring
 ZABBIX_SERVER_HOST=zabbix.local # Zabbix server hostname
 KOPIA_CLIENT_HOSTNAME=myapp-01   # Custom hostname (optional)
 
-# Deploy client with monitoring
+# Deploy only Zabbix agent on client machine
 ./scripts/setup_client.sh
 # OR
-docker-compose -f docker/docker-compose.zabbix_agent.yml up -d
+docker compose -f docker/docker-compose.zabbix_agent.yml up -d
 ```
 
 #### Available Client Metrics
