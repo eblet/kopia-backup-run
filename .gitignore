@@ -68,6 +68,7 @@ __pycache__/
 /monitoring/prometheus/data/
 /monitoring/grafana/data/
 /monitoring/zabbix/data/
+monitoring/exporters/kopia-exporter/kopia-exporter
 
 # Client monitoring
 /zabbix_agentd.log

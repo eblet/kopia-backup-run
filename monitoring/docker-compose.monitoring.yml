@@ -6,155 +6,47 @@ x-logging: &default-logging
     max-size: "${LOG_MAX_SIZE:-100M}"
     max-file: "${LOG_MAX_FILES:-7}"
 
-x-labels: &monitoring-labels
-  com.kopia.type: monitoring
-
-x-healthcheck: &default-healthcheck
-  interval: 30s
-  timeout: 10s
-  retries: 3
-  start_period: 30s
-
 services:
   prometheus:
     image: prom/prometheus:${PROMETHEUS_VERSION:-latest}
     container_name: kopia-prometheus
-    profiles:
-      - base-metrics
-      - grafana-local
-      - grafana-external
-      - zabbix-local
-      - zabbix-external
-      - grafana-zabbix-external
-      - full-stack
-    user: "${PROM_USER:-65534}:${PROM_GROUP:-65534}"
-    volumes:
-      - type: bind
-        source: ./prometheus/config/prometheus
-        target: /etc/prometheus
-        read_only: true
-      - type: volume
-        source: prometheus_data
-        target: /prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}'
-      - '--web.external-url=${PROMETHEUS_EXTERNAL_URL:-http://localhost:9090}'
-      - '--web.enable-cors=true'
-      - '--storage.tsdb.wal-compression'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
       - '--web.enable-lifecycle'
-      - ${PROMETHEUS_BASIC_AUTH:+--web.config.file=/etc/prometheus/web.yml}
+    volumes:
+      - ${PROMETHEUS_CONFIG_DIR:-./prometheus/config}:/etc/prometheus
+      - ${PROMETHEUS_DATA_DIR:-/var/lib/prometheus}:/prometheus
     ports:
       - "${PROMETHEUS_UI_PORT:-9090}:9090"
     networks:
       - monitoring_network
-      - kopia_network
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '${PROMETHEUS_CPU_LIMIT:-1}'
-          memory: ${PROMETHEUS_MEM_LIMIT:-2G}
-        reservations:
-          memory: 512M
-    security_opt:
-      - no-new-privileges:true
-    logging: *default-logging
-    labels:
-      <<: *monitoring-labels
-      com.kopia.component: prometheus
-    healthcheck:
-      <<: *default-healthcheck
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
-
-  grafana:
-    image: grafana/grafana:${GRAFANA_VERSION:-latest}
-    container_name: kopia-grafana
-    profiles:
-      - grafana-local
-      - full-stack
-    user: "${GRAFANA_USER:-472}:${GRAFANA_GROUP:-472}"
-    volumes:
-      - type: bind
-        source: ./prometheus/config/grafana/provisioning
-        target: /etc/grafana/provisioning
-        read_only: true
-      - type: bind
-        source: ./prometheus/dashboards
-        target: /var/lib/grafana/dashboards
-        read_only: true
-      - type: volume
-        source: grafana_data
-        target: /var/lib/grafana
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
-      - GF_SERVER_ROOT_URL=${GRAFANA_EXTERNAL_URL:-http://localhost:3000}
-      - GF_INSTALL_PLUGINS=${GRAFANA_PLUGINS:-}
-      - GF_SECURITY_ADMIN_API_KEY=${GRAFANA_API_KEY:-}
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_INSTALL_PLUGINS=alexanderzobnin-zabbix-datasource
-    ports:
-      - "${GRAFANA_PORT:-3000}:3000"
-    networks:
-      - monitoring_network
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '${GRAFANA_CPU_LIMIT:-1}'
-          memory: ${GRAFANA_MEM_LIMIT:-1G}
-        reservations:
-          memory: 256M
-    depends_on:
-      prometheus:
-        condition: service_healthy
-    security_opt:
-      - no-new-privileges:true
-    logging: *default-logging
-    labels:
-      <<: *monitoring-labels
-      com.kopia.component: grafana
-    healthcheck:
-      <<: *default-healthcheck
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
-
-  kopia-exporter:
-    build: 
-      context: ./prometheus/exporters
-      dockerfile: Dockerfile
-    container_name: kopia-exporter
+    user: "${PUID:-1000}:${PGID:-1000}"
     profiles:
       - base-metrics
       - grafana-local
-      - grafana-external
       - zabbix-local
       - zabbix-external
-      - grafana-zabbix-external
       - full-stack
-    environment:
-      - KOPIA_CONTAINER_NAME=${KOPIA_CONTAINER_NAME:-kopia-server}
-      - KOPIA_EXPORTER_PORT=${KOPIA_EXPORTER_PORT:-9091}
-      - TZ=${TZ:-UTC}
+    logging: *default-logging
+
+  kopia-exporter:
+    build: 
+      context: ${PWD}/monitoring/exporters/kopia-exporter
+      dockerfile: Dockerfile
+    container_name: kopia-exporter
+    volumes:
+      - ${KOPIA_BASE_DIR:-/var/lib/kopia}:/app/data:ro
     ports:
       - "${KOPIA_EXPORTER_PORT:-9091}:9091"
     networks:
       - monitoring_network
       - kopia_network
     restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    logging: *default-logging
-    labels:
-      <<: *monitoring-labels
-      com.kopia.component: exporter
-    healthcheck:
-      <<: *default-healthcheck
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9091/metrics"]
-
-  node-exporter:
-    image: prom/node-exporter:${NODE_EXPORTER_VERSION:-latest}
-    container_name: kopia-node-exporter
     profiles:
       - base-metrics
       - grafana-local
@@ -163,64 +55,74 @@ services:
       - zabbix-external
       - grafana-zabbix-external
       - full-stack
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
+    logging: *default-logging
+
+  node-exporter:
+    image: prom/node-exporter:${NODE_EXPORTER_VERSION:-latest}
+    container_name: node-exporter
     command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
-      - '--path.rootfs=/rootfs'
-      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--path.rootfs=/host'
+    volumes:
+      - /:/host:ro,rslave
     ports:
       - "${NODE_EXPORTER_PORT:-9100}:9100"
     networks:
       - monitoring_network
     restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
+    profiles:
+      - base-metrics
+      - grafana-local
+      - grafana-external
+      - zabbix-local
+      - zabbix-external
+      - grafana-zabbix-external
+      - full-stack
     logging: *default-logging
-    labels:
-      <<: *monitoring-labels
-      com.kopia.component: node-exporter
 
   zabbix-agent:
     image: zabbix/zabbix-agent2:${ZABBIX_VERSION:-latest}
     container_name: kopia-zabbix-agent
+    environment:
+      - ZBX_SERVER_HOST=${ZABBIX_SERVER_HOST:-zabbix-server}
+      - ZBX_HOSTNAME=${KOPIA_CLIENT_HOSTNAME:-$(hostname)}
+    volumes:
+      - ${ZABBIX_EXTERNAL_SCRIPTS:-/usr/lib/zabbix/externalscripts}:/usr/lib/zabbix/externalscripts:ro
+      - ${ZABBIX_AGENT_CONFIG:-/etc/zabbix/zabbix_agentd.d}:/etc/zabbix/zabbix_agentd.d:ro
+    ports:
+      - "10050:10050"
+    networks:
+      - monitoring_network
+    restart: unless-stopped
     profiles:
       - zabbix-local
       - zabbix-external
       - grafana-zabbix-external
       - full-stack
-    environment:
-      - ZBX_SERVER_HOST=${ZABBIX_SERVER_HOST}
-      - ZBX_HOSTNAME=${HOSTNAME}
+
+  grafana:
+    image: grafana/grafana:${GRAFANA_VERSION:-latest}
+    container_name: kopia-grafana
     volumes:
-      - ${ZABBIX_EXTERNAL_SCRIPTS}:/usr/lib/zabbix/externalscripts:ro
-      - ${ZABBIX_AGENT_CONFIG}:/etc/zabbix/zabbix_agentd.d:ro
+      - ${GRAFANA_DATA_DIR:-/var/lib/grafana}:/var/lib/grafana
+      - ${GRAFANA_CONFIG_DIR:-./grafana/provisioning}:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=${GRAFANA_PLUGINS:-alexanderzobnin-zabbix-app}
     ports:
-      - "10050:10050"
+      - "${GRAFANA_PORT:-3000}:3000"
     networks:
       - monitoring_network
-      - kopia_network
     restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
+    user: "${PUID:-1000}:${PGID:-1000}"
+    profiles:
+      - grafana-local
+      - full-stack
     logging: *default-logging
-    labels:
-      <<: *monitoring-labels
-      com.kopia.component: zabbix-agent
-
-volumes:
-  prometheus_data:
-    name: ${PROMETHEUS_VOLUME_NAME:-kopia_prometheus_data}
-  grafana_data:
-    name: ${GRAFANA_VOLUME_NAME:-kopia_grafana_data}
 
 networks:
   monitoring_network:
     name: ${MONITORING_NETWORK_NAME:-monitoring_network}
-    driver: ${MONITORING_NETWORK_DRIVER:-bridge}
+    driver: bridge
   kopia_network:
     external: true
-    name: ${KOPIA_NETWORK_NAME:-kopia_network} 
+    name: ${KOPIA_NETWORK_NAME:-kopia_network}

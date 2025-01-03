@@ -18,20 +18,28 @@ log() {
 check_dependencies() {
     log "INFO" "Checking dependencies..."
     
-    # Required commands
-    local commands=(docker docker-compose curl jq)
-    for cmd in "${commands[@]}"; do
-        if ! command -v "$cmd" >/dev/null 2>&1; then
-            log "ERROR" "$cmd is required but not installed"
+    # Install required packages
+    local required_packages=(
+        "jq"
+        "curl"
+        "wget"
+    )
+    
+    for package in "${required_packages[@]}"; do
+        if ! command -v "$package" >/dev/null 2>&1; then
+            log "INFO" "Installing $package..."
+            apt-get update -qq
+            apt-get install -y "$package"
+        fi
+    done
+    
+    # Verify installations
+    for package in "${required_packages[@]}"; do
+        if ! command -v "$package" >/dev/null 2>&1; then
+            log "ERROR" "Failed to install $package"
             exit 1
         fi
     done
-
-    # Check Docker networks
-    if ! docker network inspect kopia_network >/dev/null 2>&1; then
-        log "ERROR" "Kopia network not found. Is Kopia server running?"
-        exit 1
-    fi
 }
 
 # Check disk space with specific paths
@@ -411,30 +419,59 @@ deploy_monitoring() {
     fi
 }
 
+setup_kopia_exporter() {
+    log "INFO" "Setting up Kopia exporter..."
+    
+    # Ensure exporter directory exists
+    mkdir -p "${PWD}/monitoring/exporters/kopia-exporter"
+    
+    # Generate go.mod and go.sum using Docker if they don't exist
+    if [ ! -f "${PWD}/monitoring/exporters/kopia-exporter/go.sum" ]; then
+        log "INFO" "Generating go.mod and go.sum..."
+        
+        # Create temporary Dockerfile for dependency generation
+        cat > "${PWD}/monitoring/exporters/kopia-exporter/Dockerfile.deps" <<EOF
+FROM golang:1.21-alpine
+WORKDIR /app
+RUN apk add --no-cache git
+COPY main.go go.mod ./
+RUN go mod tidy
+EOF
+        
+        # Build temporary image and copy files
+        docker build -f "${PWD}/monitoring/exporters/kopia-exporter/Dockerfile.deps" \
+                    -t kopia-exporter-deps \
+                    "${PWD}/monitoring/exporters/kopia-exporter"
+        
+        # Copy generated files from container
+        docker create --name deps-container kopia-exporter-deps
+        docker cp deps-container:/app/go.sum "${PWD}/monitoring/exporters/kopia-exporter/go.sum"
+        docker rm deps-container
+        docker rmi kopia-exporter-deps
+        
+        # Cleanup
+        rm "${PWD}/monitoring/exporters/kopia-exporter/Dockerfile.deps"
+        
+        log "INFO" "Dependencies generated successfully"
+    fi
+}
+
 # Main installation function
 main() {
     log "INFO" "Starting monitoring setup..."
     
-    # Checks
+    # Run checks
     check_dependencies
     check_system_requirements
+    check_monitoring_profile
     validate_environment
+    setup_kopia_exporter
     
-    # Check external services if needed
-    verify_external_services
+    # Deploy monitoring stack
+    log "INFO" "Deploying monitoring stack with profile: ${MONITORING_PROFILE}"
+    docker compose -f monitoring/docker-compose.monitoring.yml --profile "${MONITORING_PROFILE}" up -d
     
-    # Deploy monitoring
-    deploy_monitoring
-    
-    # Configure integrations
-    if [ "${GRAFANA_ENABLED:-false}" = "true" ]; then
-        configure_grafana_integration
-    fi
-    if [ "${ZABBIX_ENABLED:-false}" = "true" ]; then
-        configure_zabbix_integration
-    fi
-    
-    log "INFO" "Monitoring setup completed"
+    log "INFO" "Monitoring setup completed successfully"
 }
 
 setup_monitoring() {
@@ -518,6 +555,133 @@ setup_monitoring() {
         log "INFO" "Deploying full monitoring stack..."
         docker-compose -f monitoring/docker-compose.monitoring.yml \
             --profile all up -d
+    fi
+}
+
+check_system_requirements() {
+    log "INFO" "Checking system requirements..."
+    
+    # Check memory
+    local available_memory=$(free -m | awk '/Mem:/ {print $7}')
+    log "INFO" "Available memory: ${available_memory}MB"
+    
+    if [ "${available_memory}" -lt 512 ]; then
+        log "ERROR" "Insufficient memory. Required: 512MB, Available: ${available_memory}MB"
+        exit 1
+    fi
+    
+    # Check disk space
+    local monitoring_dirs=(
+        "/var/lib/prometheus"
+        "/var/lib/grafana"
+        "/var/log/monitoring"
+    )
+    
+    for dir in "${monitoring_dirs[@]}"; do
+        mkdir -p "$dir"
+        local available_space=$(df -m $(dirname $dir) | awk 'NR==2 {print $4}')
+        log "INFO" "Available space for $dir: ${available_space}MB"
+        
+        if [ "${available_space}" -lt 1024 ]; then
+            log "ERROR" "Insufficient disk space for $dir. Required: 1GB, Available: ${available_space}MB"
+            exit 1
+        fi
+    done
+    
+    # Check Docker
+    if ! docker info >/dev/null 2>&1; then
+        log "ERROR" "Docker is not running or current user doesn't have permissions"
+        exit 1
+    fi
+}
+
+check_monitoring_profile() {
+    log "INFO" "Checking monitoring profile..."
+    
+    # Load environment variables
+    if [ ! -f .env ]; then
+        log "ERROR" ".env file not found"
+        exit 1
+    fi
+    source .env
+    
+    # Check monitoring profile
+    local profile="${MONITORING_PROFILE:-none}"
+    log "INFO" "Detected monitoring profile: ${profile}"
+    
+    # Validate profile
+    case "${profile}" in
+        "none")
+            log "INFO" "No monitoring will be deployed"
+            exit 0
+            ;;
+        "base-metrics"|"grafana-local"|"grafana-external"|"zabbix-local"|"zabbix-external"|"grafana-zabbix-external"|"full-stack")
+            log "INFO" "Using valid monitoring profile: ${profile}"
+            ;;
+        *)
+            log "ERROR" "Invalid monitoring profile: ${profile}"
+            log "INFO" "Valid profiles: none, base-metrics, grafana-local, grafana-external, zabbix-local, zabbix-external, grafana-zabbix-external, full-stack"
+            exit 1
+            ;;
+    esac
+}
+
+validate_environment() {
+    log "INFO" "Validating environment variables..."
+    
+    # Load environment variables
+    if [ ! -f .env ]; then
+        log "ERROR" ".env file not found"
+        exit 1
+    fi
+    source .env
+    
+    # Required variables for all profiles
+    local required_vars=(
+        "MONITORING_PROFILE"
+    )
+    
+    # Additional variables based on profile
+    case "${MONITORING_PROFILE:-none}" in
+        "grafana-local"|"full-stack")
+            required_vars+=(
+                "GRAFANA_ADMIN_PASSWORD"
+                "GRAFANA_PORT"
+            )
+            ;;
+        "grafana-external"|"grafana-zabbix-external")
+            required_vars+=(
+                "GRAFANA_URL"
+                "GRAFANA_API_KEY"
+            )
+            ;;
+        "zabbix-local"|"full-stack")
+            required_vars+=(
+                "ZABBIX_SERVER_PORT"
+                "ZABBIX_WEB_PORT"
+            )
+            ;;
+        "zabbix-external"|"grafana-zabbix-external")
+            required_vars+=(
+                "ZABBIX_URL"
+                "ZABBIX_SERVER_HOST"
+            )
+            ;;
+    esac
+    
+    # Check required variables
+    local missing_vars=()
+    for var in "${required_vars[@]}"; do
+        if [ -z "${!var:-}" ]; then
+            missing_vars+=("$var")
+        fi
+    done
+    
+    # Report missing variables
+    if [ ${#missing_vars[@]} -ne 0 ]; then
+        log "ERROR" "Missing required environment variables:"
+        printf '%s\n' "${missing_vars[@]}"
+        exit 1
     fi
 }
 
