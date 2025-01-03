@@ -179,6 +179,28 @@ initialize_repository() {
         -e KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD} \
         kopia/kopia:latest \
         repository validate-provider
+
+    # Add user to repository
+    log "INFO" "Adding user to repository..."
+    docker run --rm \
+        -v ${KOPIA_BASE_DIR}:/app/data \
+        -v ${KOPIA_CONFIG_DIR:-~/.config/kopia}:/app/config \
+        -v ${KOPIA_CACHE_DIR:-~/.cache/kopia}:/app/cache \
+        -e KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD} \
+        kopia/kopia:latest \
+        server user add \
+        --user=${KOPIA_SERVER_USERNAME:-admin} \
+        --password=${KOPIA_SERVER_PASSWORD:-admin}
+
+    # Check repository status
+    log "INFO" "Checking repository status..."
+    docker run --rm \
+        -v ${KOPIA_BASE_DIR}:/app/data \
+        -v ${KOPIA_CONFIG_DIR:-~/.config/kopia}:/app/config \
+        -v ${KOPIA_CACHE_DIR:-~/.cache/kopia}:/app/cache \
+        -e KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD} \
+        kopia/kopia:latest \
+        repository status
 }
 
 # Create systemd services
