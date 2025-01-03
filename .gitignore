@@ -63,3 +63,12 @@ dist/
 build/
 *.pyc
 __pycache__/
+
+# Monitoring
+/monitoring/prometheus/data/
+/monitoring/grafana/data/
+/monitoring/zabbix/data/
+
+# Client monitoring
+/zabbix_agentd.log
+/zabbix_agentd.conf.d/

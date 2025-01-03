@@ -76,7 +76,7 @@ NAS_MOUNT_PATH=/mnt/nas
 
 # Deploy server
 sudo ./scripts/setup_server.sh
-or
+# OR
 docker-compose -f docker/docker-compose.server.yml up -d
 ```
 
@@ -142,7 +142,7 @@ DOCKER_VOLUMES='{
 cd /path/to/kopia-backup-stack
 # Using script (recommended)
 sudo ./scripts/setup_client.sh
-# OR using docker-compose directly
+# OR 
 docker-compose -f docker/docker-compose.client.yml up -d
 
 # Setup scheduled backup (optional)
@@ -239,10 +239,12 @@ MONITORING_PROFILE=full-stack
 - Local Zabbix
 ```
 
-6. Deploy monitoring stack
+## Deploy monitoring stack
+```bash
 sudo ./scripts/setup_monitoring.sh
-or
+# OR
 docker-compose -f monitoring/docker-compose.monitoring.yml up -d
+```
 
 ## 🔧 Monitoring Options
 
@@ -273,6 +275,38 @@ MONITORING_TYPE=all  # all, zabbix, prometheus, none
 - Grafana: http://localhost:3000
 - Prometheus: http://localhost:9090
 - Zabbix: http://localhost:9090
+
+### Client Monitoring Setup
+
+#### Enable Client Monitoring
+```bash
+# Edit .env file
+ZABBIX_AGENT_ENABLED=true       # Enable Zabbix agent
+ZABBIX_CLIENT_ENABLED=true      # Enable client monitoring
+ZABBIX_SERVER_HOST=zabbix.local # Zabbix server hostname
+KOPIA_CLIENT_HOSTNAME=myapp-01   # Custom hostname (optional)
+
+# Deploy client with monitoring
+./scripts/setup_client.sh
+# OR
+docker-compose -f docker/docker-compose.zabbix_agent.yml up -d
+```
+
+#### Available Client Metrics
+- 📊 Backup status and timing
+- 💾 Backup size and count
+- ❌ Error monitoring
+- 🔄 Sync status
+
+#### Verify Client Monitoring
+```bash
+# Check agent status
+docker ps | grep zabbix-agent
+docker logs kopia-client-zabbix-agent
+
+# Test agent connection
+zabbix_get -s localhost -p 10050 -k kopia.client.backup.status
+```
 
 ## 🛠 Troubleshooting
 
@@ -337,3 +371,4 @@ docker logs kopia-exporter
 
 ## 📄 License
 MIT License - see LICENSE file
+

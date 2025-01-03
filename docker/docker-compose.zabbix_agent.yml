@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  zabbix-agent:
+    image: zabbix/zabbix-agent2:${ZABBIX_VERSION:-latest}
+    container_name: kopia-client-zabbix-agent
+    environment:
+      - ZBX_SERVER_HOST=${ZABBIX_SERVER_HOST}
+      - ZBX_HOSTNAME=${KOPIA_CLIENT_HOSTNAME:-$(hostname)}
+      - ZBX_TIMEOUT=${ZABBIX_AGENT_TIMEOUT:-30}
+    volumes:
+      - ${ZABBIX_EXTERNAL_SCRIPTS}:/usr/lib/zabbix/externalscripts:ro
+      - ${ZABBIX_AGENT_CONFIG}:/etc/zabbix/zabbix_agentd.d:ro
+    ports:
+      - "10050:10050"
+    networks:
+      - kopia_network
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "${LOG_MAX_SIZE:-100M}"
+        max-file: "${LOG_MAX_FILES:-7}"
+    labels:
+      com.kopia.type: monitoring
+      com.kopia.component: zabbix-agent
+      com.kopia.role: client
+
+networks:
+  kopia_network:
+    external: true
+    name: ${KOPIA_NETWORK_NAME:-kopia_network} 

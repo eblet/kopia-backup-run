@@ -281,6 +281,49 @@ check_permissions() {
     done
 }
 
+# Setup monitoring
+setup_monitoring() {
+    if [ "${ZABBIX_AGENT_ENABLED:-false}" = "true" ] && [ "${ZABBIX_CLIENT_ENABLED:-false}" = "true" ]; then
+        log "INFO" "Setting up Zabbix agent for client..."
+        
+        # Validate required variables
+        local required_vars=(
+            "ZABBIX_SERVER_HOST"
+            "ZABBIX_EXTERNAL_SCRIPTS"
+            "ZABBIX_AGENT_CONFIG"
+        )
+        
+        for var in "${required_vars[@]}"; do
+            if [ -z "${!var}" ]; then
+                log "ERROR" "Required variable $var is not set"
+                exit 1
+            fi
+        done
+        
+        # Create required directories
+        sudo mkdir -p "${ZABBIX_EXTERNAL_SCRIPTS}"
+        sudo mkdir -p "${ZABBIX_AGENT_CONFIG}"
+        
+        # Copy monitoring scripts
+        sudo cp monitoring/zabbix/scripts/* "${ZABBIX_EXTERNAL_SCRIPTS}/"
+        sudo chmod +x "${ZABBIX_EXTERNAL_SCRIPTS}"/*
+        
+        # Copy agent configuration
+        sudo cp monitoring/zabbix/config/zabbix_agentd.d/* "${ZABBIX_AGENT_CONFIG}/"
+        
+        # Start Zabbix agent
+        docker-compose -f docker/docker-compose.zabbix_agent.yml up -d
+        
+        # Verify agent is running
+        if ! docker ps | grep -q kopia-client-zabbix-agent; then
+            log "ERROR" "Failed to start Zabbix agent"
+            exit 1
+        fi
+        
+        log "INFO" "Zabbix agent setup completed"
+    fi
+}
+
 # Main execution
 main() {
     log "INFO" "Starting Kopia client backup process..."
@@ -294,6 +337,9 @@ main() {
     validate_volumes_config
     check_server
     run_backup
+
+    # Setup monitoring if enabled
+    setup_monitoring
 
     log "INFO" "Backup process completed successfully"
 }
