@@ -273,6 +273,7 @@ MONITORING_PROFILE=full-stack
 - Grafana: http://localhost:3000
 - Prometheus: http://localhost:9090
 - Zabbix: http://localhost:9090
+```
 
 ## Available Client Metrics
 - 📊 Backup status and timing
