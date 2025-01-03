@@ -100,6 +100,8 @@ graph TB
 | Variable | Description | Default | Example |
 |----------|-------------|---------|---------|
 | GRAFANA_PORT | Web interface port | 3000 | 3000 |
+| GRAFANA_ADMIN_PASSWORD | Admin password | admin | secure-password |
+| GRAFANA_API_KEY | API key for integrations | - | generated-api-key |
 | GRAFANA_PLUGINS | Additional plugins | - | grafana-piechart-panel |
 | GRAFANA_CPU_LIMIT | CPU limit for container | 1 | 2 |
 | GRAFANA_MEM_LIMIT | Memory limit for container | 1G | 2G |

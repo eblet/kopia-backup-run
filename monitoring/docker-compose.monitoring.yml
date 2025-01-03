@@ -84,6 +84,7 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
       - GF_SERVER_ROOT_URL=${GRAFANA_EXTERNAL_URL:-http://localhost:3000}
       - GF_INSTALL_PLUGINS=${GRAFANA_PLUGINS:-}
+      - GF_SECURITY_ADMIN_API_KEY=${GRAFANA_API_KEY:-}
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_INSTALL_PLUGINS=alexanderzobnin-zabbix-datasource
     ports:

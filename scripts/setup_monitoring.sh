@@ -104,6 +104,67 @@ setup_zabbix() {
     (cd monitoring/zabbix && ./setup.sh)
 }
 
+# Generate Grafana API key
+generate_grafana_api_key() {
+    log "INFO" "Generating Grafana API key..."
+    
+    # Wait for Grafana to be ready
+    local max_retries=30
+    local retry_delay=5
+    local grafana_url="http://localhost:${GRAFANA_PORT:-3000}"
+    
+    for ((i=1; i<=max_retries; i++)); do
+        if curl -s "${grafana_url}/api/health" | grep -q "ok"; then
+            log "INFO" "Grafana is ready"
+            break
+        fi
+        if [ $i -eq $max_retries ]; then
+            log "ERROR" "Grafana not ready after ${max_retries} attempts"
+            exit 1
+        fi
+        log "INFO" "Waiting for Grafana to be ready (attempt $i)..."
+        sleep $retry_delay
+    done
+
+    # Generate API key
+    local api_key=$(curl -s -X POST \
+        -H "Content-Type: application/json" \
+        -u "admin:${GRAFANA_ADMIN_PASSWORD}" \
+        "${grafana_url}/api/auth/keys" \
+        -d '{
+            "name": "kopia-monitoring",
+            "role": "Admin",
+            "secondsToLive": 315360000
+        }' | jq -r '.key')
+
+    if [ -z "$api_key" ] || [ "$api_key" = "null" ]; then
+        log "ERROR" "Failed to generate Grafana API key"
+        exit 1
+    fi
+
+    # Save API key to file
+    local api_key_file="${KOPIA_BASE_DIR}/grafana_api_key"
+    echo "${api_key}" > "${api_key_file}"
+    chmod 600 "${api_key_file}"
+
+    # Update .env file
+    if grep -q "^GRAFANA_API_KEY=" .env; then
+        sed -i "s|^GRAFANA_API_KEY=.*|GRAFANA_API_KEY=${api_key}|" .env
+    else
+        echo "GRAFANA_API_KEY=${api_key}" >> .env
+    fi
+
+    # Print key information
+    log "INFO" "Generated Grafana API key:"
+    log "INFO" "Key has been saved to: ${api_key_file}"
+    log "INFO" "Key has been added to .env file"
+    log "INFO" "Key value (save this somewhere safe):"
+    echo "----------------------------------------"
+    echo "${api_key}"
+    echo "----------------------------------------"
+    log "INFO" "This key will be valid for 10 years"
+}
+
 # Main execution with rollback
 main() {
     # Create temporary file for tracking progress
