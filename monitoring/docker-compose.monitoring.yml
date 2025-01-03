@@ -46,16 +46,21 @@ services:
     networks:
       - monitoring_network
       - kopia_network
+    labels:
+      - "prometheus.io/scrape=${PROMETHEUS_SCRAPE:-true}"
+      - "prometheus.io/port=${KOPIA_EXPORTER_PORT:-9091}"
+      - "prometheus.io/path=/metrics"
     restart: unless-stopped
-    profiles:
+    profiles: &exporter_profiles
       - base-metrics
       - grafana-local
       - grafana-external
       - zabbix-local
       - zabbix-external
       - grafana-zabbix-external
+      - prometheus-external
+      - all-external
       - full-stack
-    logging: *default-logging
 
   node-exporter:
     image: prom/node-exporter:${NODE_EXPORTER_VERSION:-latest}
@@ -68,16 +73,12 @@ services:
       - "${NODE_EXPORTER_PORT:-9100}:9100"
     networks:
       - monitoring_network
+    labels:
+      - "prometheus.io/scrape=${PROMETHEUS_SCRAPE:-true}"
+      - "prometheus.io/port=${NODE_EXPORTER_PORT:-9100}"
+      - "prometheus.io/path=/metrics"
     restart: unless-stopped
-    profiles:
-      - base-metrics
-      - grafana-local
-      - grafana-external
-      - zabbix-local
-      - zabbix-external
-      - grafana-zabbix-external
-      - full-stack
-    logging: *default-logging
+    profiles: *exporter_profiles
 
   zabbix-agent:
     image: zabbix/zabbix-agent2:${ZABBIX_VERSION:-latest}
@@ -98,6 +99,7 @@ services:
       - zabbix-local
       - zabbix-external
       - grafana-zabbix-external
+      - all-external
       - full-stack
 
   grafana:

@@ -261,7 +261,34 @@ ZABBIX_SERVER_HOST=your-zabbix
 docker compose -f monitoring/docker-compose.monitoring.yml up -d
 ```
 
-5. Full Stack
+5. External All Services
+
+If you're using all external services (zabbix, grafana, prometheus), you need to:
+
+1. Set the monitoring profile:
+```bash
+MONITORING_PROFILE=all-external
+```
+
+2. Configure your external Prometheus to scrape metrics from:
+- Kopia Exporter: http://your-kopia-host:9091/metrics
+- Node Exporter: http://your-kopia-host:9100/metrics
+
+Example Prometheus configuration:
+```yaml
+scrape_configs:
+  - job_name: 'kopia'
+    static_configs:
+      - targets: ['your-kopia-host:9091']
+    metrics_path: '/metrics'
+
+  - job_name: 'node'
+    static_configs:
+      - targets: ['your-kopia-host:9100']
+    metrics_path: '/metrics'
+```
+
+6. Full Stack
 ```bash
 MONITORING_PROFILE=full-stack
 # Deploys all components locally:
