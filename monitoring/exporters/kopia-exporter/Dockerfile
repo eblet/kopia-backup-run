@@ -8,7 +8,12 @@ RUN go mod download && \
 FROM alpine:3.19
 WORKDIR /app
 COPY --from=builder /app/kopia-exporter .
-RUN apk add --no-cache ca-certificates curl kopia
+
+# Установка kopia из официального образа
+COPY --from=kopia/kopia:latest /bin/kopia /usr/local/bin/kopia
+
+# Установка необходимых зависимостей
+RUN apk add --no-cache ca-certificates curl
 
 EXPOSE 9091
 ENTRYPOINT ["/app/kopia-exporter"]
