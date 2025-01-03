@@ -82,9 +82,10 @@ services:
   zabbix-agent:
     image: zabbix/zabbix-agent2:${ZABBIX_VERSION:-latest}
     container_name: kopia-zabbix-agent
+    hostname: ${KOPIA_CLIENT_HOSTNAME:-kopia-agent}
     environment:
       - ZBX_SERVER_HOST=${ZABBIX_SERVER_HOST:-zabbix-server}
-      - ZBX_HOSTNAME=${KOPIA_CLIENT_HOSTNAME:-$(hostname)}
+      - ZBX_HOSTNAME=${KOPIA_CLIENT_HOSTNAME:-kopia-agent}
     volumes:
       - ${ZABBIX_EXTERNAL_SCRIPTS:-/usr/lib/zabbix/externalscripts}:/usr/lib/zabbix/externalscripts:ro
       - ${ZABBIX_AGENT_CONFIG:-/etc/zabbix/zabbix_agentd.d}:/etc/zabbix/zabbix_agentd.d:ro

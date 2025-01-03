@@ -636,6 +636,16 @@ validate_environment() {
     fi
     source .env
     
+    # Set default hostname if not provided
+    if [ -z "${KOPIA_CLIENT_HOSTNAME}" ]; then
+        KOPIA_CLIENT_HOSTNAME="kopia-$(hostname | tr '.' '-')"
+        log "INFO" "Setting default hostname: ${KOPIA_CLIENT_HOSTNAME}"
+        # Add to .env if it doesn't exist
+        if ! grep -q "KOPIA_CLIENT_HOSTNAME=" .env; then
+            echo "KOPIA_CLIENT_HOSTNAME=${KOPIA_CLIENT_HOSTNAME}" >> .env
+        fi
+    fi
+
     # Required variables for all profiles
     local required_vars=(
         "MONITORING_PROFILE"
