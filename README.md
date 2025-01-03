@@ -1,108 +1,53 @@
-# 🚀 Kopia Backup Stack Documentation
-
-## 📋 Overview
-Enterprise-grade backup solution using Kopia with comprehensive monitoring capabilities.
-
-- [Overview](#overview)
-- [Architecture](#architecture)
-- [Key Features](#key-features)
-- [Quick Start](#quick-start)
-
-### 🛠️ Chapter 2: Installation
-- [Prerequisites](#prerequisites)
-- [Basic Setup](#basic-setup)
-- [Advanced Installation](#advanced-installation)
-- [Post-Installation](#post-installation)
-
-### 📊 Chapter 3: Monitoring
-- [Monitoring Overview](#monitoring-overview)
-- [Available Profiles](#monitoring-profiles)
-- [Components](#monitoring-components)
-- [Metrics & Alerts](#metrics-and-alerts)
-
-### 🔐 Chapter 4: Security
-- [Security Overview](#security-overview)
-- [Authentication](#authentication)
-- [Encryption](#encryption)
-- [Network Security](#network-security)
-
-### 🔧 Chapter 5: Maintenance
-- [Routine Tasks](#routine-tasks)
-- [Backup Management](#backup-management)
-- [System Maintenance](#system-maintenance)
-- [Troubleshooting](#troubleshooting)
-
-
----
-
-# 📋 Chapter 1: Introduction
+# 🚀 Kopia Backup Stack
 
 ## Overview
+Enterprise-grade backup solution using Kopia with comprehensive monitoring capabilities.
 
-Kopia Backup Stack is an enterprise-grade backup solution featuring:
-- 🔄 Automated backup management
-- 📊 Multi-level monitoring (Prometheus, Grafana, Zabbix)
-- 🔐 Enhanced security with TLS support
-- 📈 Performance metrics and analytics
-- 🚨 Intelligent alerting system
+## Documentation Structure
 
-## 🏗️ Architecture
-```mermaid
-graph TB
-    subgraph "🔄 Backup Core"
-        KS[Kopia Server]
-        KC[Kopia Client]
-        NAS[(NAS Storage)]
-    end
-    
-    subgraph "📊 Monitoring Stack"
-        PE[Prometheus]
-        GF[Grafana]
-        ZB[Zabbix]
-        
-        subgraph "🔍 Metrics Collection"
-            KE[Kopia Exporter]
-            NE[Node Exporter]
-            ZA[Zabbix Agent]
-        end
-    end
-    
-    KC -->|Backup| KS
-    KS -->|Store| NAS
-    KE -->|Metrics| PE
-    NE -->|System Metrics| PE
-    ZA -->|Status| ZB
-    PE -->|Data| GF
-    ZB -->|Data| GF
-```
+### 📋 Chapter 1: Introduction
+Detailed introduction to the Kopia Backup Stack system is available in [docs/chapter1_introduction.md](docs/chapter1_introduction.md):
+- System overview and architecture
+- Core components and features
+- Quick start guide
+- Basic concepts
 
-## 🚀 Quick Start
+### 🛠️ Chapter 2: Installation
+Complete installation instructions can be found in [docs/chapter2_installation.md](docs/chapter2_installation.md):
+- System requirements
+- Server installation
+- Client setup
+- Configuration options
+- Post-installation steps
 
-### Backup Capabilities
-- Incremental backups
-- Data deduplication
-- Compression
-- Encryption
-- Snapshot management
+### 📊 Chapter 3: Monitoring
+Comprehensive monitoring guide is available in [docs/chapter3_monitoring.md](docs/chapter3_monitoring.md):
+- Monitoring profiles and comparison
+- Component setup (Prometheus, Grafana, Zabbix)
+- Metrics and alerts configuration
+- Dashboard setup
+- Performance monitoring
 
-### Monitoring Features
-- Real-time metrics
-- Custom dashboards
-- Alert management
-- Performance analytics
-- Multi-system integration
+### 🔐 Chapter 4: Security
+Security documentation is detailed in [docs/chapter4_security.md](docs/chapter4_security.md):
+- Authentication and authorization
+- TLS/SSL configuration
+- Network security
+- Access control
+- Security best practices
 
-### Security Features
-- TLS encryption
-- Role-based access
-- Audit logging
-- Network isolation
-- Certificate management
+### 🔧 Chapter 5: Maintenance
+System maintenance procedures are described in [docs/chapter5_maintenance.md](docs/chapter5_maintenance.md):
+- Routine tasks
+- Backup management
+- System updates
+- Performance optimization
+- Troubleshooting
 
 ## Quick Start
 
+### Server Setup
 ```bash
-
 # Clone repository
 git clone https://github.com/eblet/kopia-backup-stack
 cd kopia-backup-stack
@@ -111,52 +56,79 @@ cd kopia-backup-stack
 cp .env.example .env
 nano .env
 
-### Client Setup
+# Initialize server
 ./scripts/setup_server.sh
-
-### Client Setup
-./scripts/setup_client.sh
-
-### Monitoring Setup
-./scripts/setup_monitoring.sh
-
 ```
 
-[Previous Installation Guide content...]
+### Client Setup
+```bash
+# Setup client
+./scripts/setup_client.sh
 
----
+# Configure backup paths
+docker exec kopia-client kopia policy set /data \
+    --compression=zstd \
+    --snapshot-time-schedule="0 2 * * *"
+```
 
-# 📊 Chapter 3: Monitoring
+### Monitoring Setup
+```bash
+# Initialize monitoring
+./scripts/setup_monitoring.sh
 
-[Previous Monitoring Guide content...]
+# Access dashboards
+# Grafana: http://localhost:3000
+# Prometheus: http://localhost:9090
+# Zabbix: http://localhost/zabbix
+```
 
----
+## Configuration Files
 
-# 🔐 Chapter 4: Security
+### Core Configuration
+- `.env.example` - Environment variables template
+- `docker/docker-compose.server.yml` - Server container configuration
+- `docker/docker-compose.client.yml` - Client container configuration
 
-[Previous Security Guide content...]
+### Monitoring Configuration
+- `monitoring/prometheus/config/` - Prometheus configuration
+- `monitoring/zabbix/templates/` - Zabbix templates
+- `monitoring/exporters/` - Custom exporters
 
----
+### Web Server Configuration
+- `docs/conf/nginx.conf` - Nginx configuration example
+- `docs/conf/traefik.yml` - Traefik configuration example
 
-# 🔧 Chapter 5: Maintenance
+## Directory Structure
+```bash
+.
+├── docs/                  # Documentation
+│   ├── chapter1_introduction.md
+│   ├── chapter2_installation.md
+│   ├── chapter3_monitoring.md
+│   ├── chapter4_security.md
+│   ├── chapter5_maintenance.md
+│   └── conf/             # Configuration examples
+├── docker/               # Docker compositions
+├── monitoring/           # Monitoring components
+│   ├── exporters/       # Custom exporters
+│   ├── prometheus/      # Prometheus configuration
+│   └── zabbix/          # Zabbix templates
+└── scripts/             # Setup and maintenance scripts
+```
 
-[Previous Maintenance Guide content...]
+## Additional Resources
 
----
-
-## 📚 Additional Resources
-
-### 📖 Documentation
+### Documentation
 - [Kopia Documentation](https://kopia.io/docs/)
 - [Prometheus Documentation](https://prometheus.io/docs/)
 - [Grafana Documentation](https://grafana.com/docs/)
 - [Zabbix Documentation](https://www.zabbix.com/documentation/)
 
-### 🔗 Related Projects
+### Related Projects
 - [Kopia](https://github.com/kopia/kopia)
 - [Prometheus](https://github.com/prometheus/prometheus)
 - [Grafana](https://github.com/grafana/grafana)
 - [Zabbix](https://github.com/zabbix/zabbix)
 
-### 📄 License
+### License
 MIT License - see [LICENSE](LICENSE) for details.
