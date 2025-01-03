@@ -68,6 +68,16 @@ rollback() {
 setup_prometheus() {
     log "INFO" "Setting up Prometheus monitoring..."
     
+    # Check basic auth configuration
+    if [ "${PROMETHEUS_BASIC_AUTH:-false}" = "true" ]; then
+        if [ -z "${PROMETHEUS_AUTH_USER}" ] || [ -z "${PROMETHEUS_AUTH_PASSWORD}" ]; then
+            log "ERROR" "Basic auth enabled but credentials not set"
+            log "ERROR" "Please set PROMETHEUS_AUTH_USER and PROMETHEUS_AUTH_PASSWORD"
+            exit 1
+        fi
+        log "INFO" "Basic auth enabled for Prometheus"
+    fi
+
     # Create required directories
     sudo mkdir -p "${PROMETHEUS_DATA_DIR:-/var/lib/prometheus}"
     sudo mkdir -p "${GRAFANA_DATA_DIR:-/var/lib/grafana}"

@@ -43,6 +43,7 @@ services:
       - '--web.enable-cors=true'
       - '--storage.tsdb.wal-compression'
       - '--web.enable-lifecycle'
+      - ${PROMETHEUS_BASIC_AUTH:+--web.config.file=/etc/prometheus/web.yml}
     ports:
       - "${PROMETHEUS_UI_PORT:-9090}:9090"
     networks:

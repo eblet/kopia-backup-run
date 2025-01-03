@@ -109,6 +109,34 @@ groups:
 
 ## 🔧 Configuration
 
+### Base Metrics Profile
+```yaml
+# Minimal prometheus.yml
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'kopia'
+    static_configs:
+      - targets: ['kopia-exporter:9091']
+```
+
+### With Authentication (Optional)
+```yaml
+# Enable basic auth
+PROMETHEUS_BASIC_AUTH=true
+PROMETHEUS_AUTH_USER=admin
+PROMETHEUS_AUTH_PASSWORD=secure-password
+```
+
+### External Access
+```yaml
+# Configure CORS for external Grafana
+command:
+  - '--web.enable-cors=true'
+  - '--web.cors.origin=*'
+```
+
 ### Environment Variables
 
 #### Prometheus Settings

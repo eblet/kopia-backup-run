@@ -5,4 +5,12 @@ datasources:
     type: prometheus
     access: proxy
     url: http://${KOPIA_SERVER_IP}:${PROMETHEUS_UI_PORT}
-    isDefault: true 
+    isDefault: true
+    jsonData:
+      timeInterval: "15s"
+      httpMethod: "POST"
+    # Add basic auth if enabled
+    basicAuth: ${PROMETHEUS_BASIC_AUTH}
+    basicAuthUser: ${PROMETHEUS_AUTH_USER}
+    secureJsonData:
+      basicAuthPassword: ${PROMETHEUS_AUTH_PASSWORD} 

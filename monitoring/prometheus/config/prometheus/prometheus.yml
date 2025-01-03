@@ -1,21 +1,27 @@
 global:
-  scrape_interval: ${PROMETHEUS_SCRAPE_INTERVAL:-15s}
-  evaluation_interval: ${PROMETHEUS_EVAL_INTERVAL:-15s}
-  scrape_timeout: ${PROMETHEUS_SCRAPE_TIMEOUT:-10s}
+  scrape_interval: 15s
+  evaluation_interval: 15s
 
-rule_files:
-  - "rules/*.yml"
+# Basic auth configuration
+basic_auth_users:
+  ${PROMETHEUS_AUTH_USER}: ${PROMETHEUS_AUTH_PASSWORD}
 
 scrape_configs:
   - job_name: 'kopia'
+    basic_auth:
+      username: ${PROMETHEUS_AUTH_USER}
+      password: ${PROMETHEUS_AUTH_PASSWORD}
     static_configs:
-      - targets: ['kopia-exporter:${KOPIA_EXPORTER_PORT:-9091}']
+      - targets: ['kopia-exporter:9091']
     metrics_path: '/metrics'
     scheme: 'http'
 
   - job_name: 'node'
+    basic_auth:
+      username: ${PROMETHEUS_AUTH_USER}
+      password: ${PROMETHEUS_AUTH_PASSWORD}
     static_configs:
-      - targets: ['node-exporter:${NODE_EXPORTER_PORT:-9100}']
+      - targets: ['node-exporter:9100']
     metrics_path: '/metrics'
     scheme: 'http'
 

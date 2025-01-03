@@ -110,6 +110,34 @@ UserParameter=kopia.repo.size,/usr/lib/zabbix/externalscripts/check_repository.s
 
 ## 🔧 Configuration
 
+#### Profile-Specific Configuration
+
+### Local Zabbix Profile
+```bash
+MONITORING_PROFILE=zabbix-local
+# Additional settings:
+ZABBIX_AGENT_HOSTNAME=${HOSTNAME}
+ZABBIX_AGENT_PORT=10050
+ZABBIX_AGENT_TIMEOUT=30
+```
+
+### External Zabbix Profile
+```bash
+MONITORING_PROFILE=zabbix-external
+ZABBIX_ENABLED=true
+ZABBIX_EXTERNAL=true
+ZABBIX_URL=http://zabbix/api_jsonrpc.php
+ZABBIX_SERVER_HOST=zabbix.local
+```
+
+### Agent Configuration
+```conf
+# Advanced agent settings
+ServerActive=${ZABBIX_SERVER_HOST}
+Hostname=${ZABBIX_AGENT_HOSTNAME}
+Timeout=${ZABBIX_AGENT_TIMEOUT}
+``` 
+
 ### Environment Variables
 | Variable | Description | Default | Example |
 |----------|-------------|---------|---------|
@@ -206,3 +234,4 @@ curl -H "Authorization: Bearer ${GRAFANA_API_KEY}" \
 - [Grafana-Zabbix Plugin](https://grafana.com/grafana/plugins/alexanderzobnin-zabbix-datasource/)
 - [Template Reference](https://www.zabbix.com/documentation/current/manual/config/templates)
 - [Zabbix API Documentation](https://www.zabbix.com/documentation/current/manual/api) 
+
