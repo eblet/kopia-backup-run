@@ -1,237 +1,177 @@
-# 🔍 Zabbix Integration for Kopia
+# 🔍 Kopia Zabbix Integration
 
-## 📋 Overview
-Enterprise-level monitoring integration for Kopia Backup System:
-- 🔍 Active backup status checks
-- 📊 Performance metrics collection
-- 🚨 Customizable alerts
-- 📱 Integration with Grafana
+## 🎯 Overview
+Zabbix monitoring integration for Kopia backup system with custom templates and triggers.
 
-## 🏗️ Components
+## 🏗️ Architecture
 
-### 1. Monitoring Scripts
-
-#### check_kopia_backup.sh
-Validates backup status and integrity:
-```bash
-# Usage
-/usr/lib/zabbix/externalscripts/check_kopia_backup.sh
-
-# Returns JSON:
-{
-    "status": "ok|error",
-    "latest_backup": "2024-01-20T02:00:00Z",
-    "age_hours": 24,
-    "validation": true,
-    "size": 1024000,
-    "files": 1000
-}
-```
-
-#### check_nas_connection.sh
-Monitors NAS connectivity:
-```bash
-# Usage
-/usr/lib/zabbix/externalscripts/check_nas_connection.sh
-
-# Return codes:
-# 0 - OK
-# 1 - NAS unreachable
-# 2 - Share unavailable
-# 3 - Mount issues
-```
-
-#### check_repository.sh
-Verifies repository health:
-```bash
-# Usage
-/usr/lib/zabbix/externalscripts/check_repository.sh
-
-# Returns JSON:
-{
-    "status": "ok|error",
-    "size": 1024000,
-    "free_space": 10240000,
-    "integrity": true
-}
-```
-
-### 2. Templates
-
-#### Backup Monitoring Template
-- **Items:**
-  - Backup Status (JSON)
-  - Backup Age (hours)
-  - Backup Size (bytes)
-  - Files Count
-  - Validation Status
-
-- **Triggers:**
-  ```yaml
-  - name: "Backup too old"
-    expression: {Kopia:kopia.backup.age.last()}>24
-    severity: WARNING
+```mermaid
+graph TB
+    subgraph "🔄 Kopia Client"
+        KS[Kopia Server]
+        ZA[Zabbix Agent]
+        KE[Kopia Exporter]
+    end
     
-  - name: "Backup validation failed"
-    expression: {Kopia:kopia.backup.validation.last()}=0
-    severity: HIGH
-  ```
-
-#### Repository Template
-- **Items:**
-  - Repository Size
-  - Free Space
-  - Growth Rate
-  - Integrity Status
-
-- **Triggers:**
-  ```yaml
-  - name: "Repository integrity check failed"
-    expression: {Kopia:kopia.repo.integrity.last()}=0
-    severity: HIGH
+    subgraph "🔍 Zabbix Server"
+        ZS[Zabbix Server]
+        ZW[Zabbix Web]
+        ZD[(Zabbix DB)]
+    end
     
-  - name: "Low repository space"
-    expression: {Kopia:kopia.repo.free_space.last()}<10G
-    severity: WARNING
-  ```
-
-### 3. User Parameters
-```conf
-# /etc/zabbix/zabbix_agentd.d/userparameter_kopia.conf
-
-# Backup monitoring
-UserParameter=kopia.backup.status,/usr/lib/zabbix/externalscripts/check_kopia_backup.sh
-UserParameter=kopia.backup.age,/usr/lib/zabbix/externalscripts/check_kopia_backup.sh | jq .age_hours
-
-# Repository monitoring
-UserParameter=kopia.repo.status,/usr/lib/zabbix/externalscripts/check_repository.sh
-UserParameter=kopia.repo.size,/usr/lib/zabbix/externalscripts/check_repository.sh | jq .size
+    ZA -->|Active Checks| ZS
+    KE -->|Metrics| ZA
+    ZS -->|Store| ZD
+    ZW -->|Read| ZD
+    
+    classDef client fill:#bbf,stroke:#333,stroke-width:2px;
+    classDef server fill:#fbb,stroke:#333,stroke-width:2px;
+    classDef db fill:#bfb,stroke:#333,stroke-width:2px;
+    
+    class KS,ZA,KE client;
+    class ZS,ZW server;
+    class ZD db;
 ```
 
-## 🔧 Configuration
+## 📁 Directory Structure
+```
+zabbix/
+├── 📝 config/
+│   └── zabbix_agentd.d/
+│       └── userparameter_kopia_client.conf  # Custom Kopia parameters
+├── 📊 templates/
+│   └── template_kopia_backup.xml           # Zabbix monitoring template
+└── 📜 scripts/
+    └── kopia_metrics.sh                    # Helper scripts
+```
 
-#### Profile-Specific Configuration
+## 📊 Available Metrics
 
-### Local Zabbix Profile
+### 🔄 Backup Status
+- `kopia.backup.status` - Current backup status (0=error, 1=success)
+- `kopia.backup.last_run` - Timestamp of last backup
+- `kopia.backup.size` - Total backup size in bytes
+
+### 💾 Repository Status
+- `kopia.repo.status` - Repository health (0=error, 1=ok)
+- `kopia.repo.size` - Repository size in bytes
+- `kopia.repo.objects` - Number of objects in repository
+
+### 🚦 Performance Metrics
+- `kopia.performance.upload_speed` - Current upload speed
+- `kopia.performance.download_speed` - Current download speed
+- `kopia.performance.compression_ratio` - Achieved compression ratio
+
+## ⚙️ Configuration
+
+### 🔧 Agent Configuration
+```ini
+# zabbix_agentd.d/userparameter_kopia_client.conf
+UserParameter=kopia.backup.status,/usr/local/bin/kopia_metrics.sh status
+UserParameter=kopia.backup.size,/usr/local/bin/kopia_metrics.sh size
+UserParameter=kopia.repo.status,/usr/local/bin/kopia_metrics.sh repo
+```
+
+### 🎯 Triggers
+```xml
+<trigger>
+    <name>Kopia Backup Failed</name>
+    <expression>{Template Kopia:kopia.backup.status.last()}=0</expression>
+    <priority>HIGH</priority>
+</trigger>
+```
+
+### 📈 Graphs
+```xml
+<graph>
+    <name>Kopia Backup Size</name>
+    <item>
+        <key>kopia.backup.size</key>
+        <color>00AA00</color>
+    </item>
+</graph>
+```
+
+## 🚀 Quick Start
+
+### 1. 📦 Installation
 ```bash
-MONITORING_PROFILE=zabbix-local
-# Additional settings:
-ZABBIX_AGENT_HOSTNAME=${HOSTNAME}
-ZABBIX_AGENT_PORT=10050
-ZABBIX_AGENT_TIMEOUT=30
+# Deploy Zabbix agent
+docker compose -f docker-compose.zabbix_agent.yml up -d
+
+# Verify agent is running
+docker ps | grep zabbix-agent
 ```
 
-### External Zabbix Profile
+### 2. 🔗 Integration
 ```bash
-MONITORING_PROFILE=zabbix-external
-ZABBIX_ENABLED=true
-ZABBIX_EXTERNAL=true
-ZABBIX_URL=http://zabbix/api_jsonrpc.php
-ZABBIX_SERVER_HOST=zabbix.local
+# Add host to Zabbix server
+zabbix_sender -z zabbix-server -s "kopia-client" -k kopia.backup.status -o 1
+
+# Import template
+zabbix_sender -z zabbix-server -i template_kopia_backup.xml
 ```
 
-### Agent Configuration
-```conf
-# Advanced agent settings
-ServerActive=${ZABBIX_SERVER_HOST}
-Hostname=${ZABBIX_AGENT_HOSTNAME}
-Timeout=${ZABBIX_AGENT_TIMEOUT}
-``` 
+## 🔍 Troubleshooting
 
-### Environment Variables
-| Variable | Description | Default | Example |
-|----------|-------------|---------|---------|
-| ZABBIX_URL | Zabbix API URL | http://zabbix-web:80/api_jsonrpc.php | http://zabbix.local/api_jsonrpc.php |
-| ZABBIX_USERNAME | Admin username | Admin | zabbix_admin |
-| ZABBIX_PASSWORD | Admin password | zabbix | secure-password |
-| ZABBIX_EXTERNAL_SCRIPTS | Scripts directory | /usr/lib/zabbix/externalscripts | /opt/zabbix/scripts |
-| ZABBIX_AGENT_CONFIG | Agent config directory | /etc/zabbix/zabbix_agentd.d | /etc/zabbix/conf.d |
-
-### Integration with Grafana
-```yaml
-# Zabbix datasource configuration
-datasources:
-  - name: Zabbix
-    type: alexanderzobnin-zabbix-datasource
-    url: ${ZABBIX_URL}
-    jsonData:
-      username: ${ZABBIX_USERNAME}
-      trendsFrom: "7d"
-      trendsRange: "4d"
-      cacheTTL: "1h"
-    secureJsonData:
-      password: ${ZABBIX_PASSWORD}
-```
-
-## 🛠 Troubleshooting
-
-### Common Issues
-
-1. Script Permissions
+### 🔄 Check Agent Status
 ```bash
-# Fix script permissions
-chmod +x /usr/lib/zabbix/externalscripts/check_*.sh
-chown zabbix:zabbix /usr/lib/zabbix/externalscripts/check_*.sh
-
-# Verify permissions
-ls -l /usr/lib/zabbix/externalscripts/check_*.sh
-```
-
-2. Agent Configuration
-```bash
-# Verify agent config
-zabbix_agentd -t userparameter_kopia.conf
-
-# Check syntax
-zabbix_agentd -p | grep kopia
-
-# Restart agent
-systemctl restart zabbix-agent
-```
-
-3. Integration Issues
-```bash
-# Test API connection
-curl -s -H "Content-Type: application/json" \
-     -d '{"jsonrpc":"2.0","method":"user.login","params":{"user":"${ZABBIX_USERNAME}","password":"${ZABBIX_PASSWORD}"},"id":1}' \
-     ${ZABBIX_URL}
+# Test agent connection
+zabbix_get -s localhost -p 10050 -k agent.ping
 
 # Check agent logs
-tail -f /var/log/zabbix/zabbix_agentd.log
-
-# Test items manually
-zabbix_agentd -t kopia.backup.status
+docker logs kopia-zabbix-agent
 ```
 
-### Debugging Tips
-1. Enable debug logging in zabbix_agentd.conf:
-```conf
-DebugLevel=4
-LogFile=/var/log/zabbix/zabbix_agentd.log
-```
+### ❗ Common Issues
 
-2. Test script outputs directly:
+#### 1. 🔌 Connection Issues
 ```bash
-# Test backup check
-sudo -u zabbix /usr/lib/zabbix/externalscripts/check_kopia_backup.sh
+# Check if agent is listening
+netstat -tulpn | grep 10050
 
-# Test NAS check
-sudo -u zabbix /usr/lib/zabbix/externalscripts/check_nas_connection.sh
+# Test firewall
+telnet zabbix-server 10051
 ```
 
-3. Verify Grafana integration:
+#### 2. 🔑 Authentication Problems
 ```bash
-# Check Zabbix plugin
-docker exec kopia-grafana grafana-cli plugins ls | grep zabbix
+# Verify PSK configuration
+cat /etc/zabbix/zabbix_agentd.conf | grep PSK
 
-# Test datasource
-curl -H "Authorization: Bearer ${GRAFANA_API_KEY}" \
-     http://localhost:3000/api/datasources/proxy/1/api/v1/items
+# Check permissions
+ls -la /etc/zabbix/zabbix_agentd.d/
 ```
 
-## 📚 Additional Resources
-- [Zabbix Documentation](https://www.zabbix.com/documentation/)
-- [Grafana-Zabbix Plugin](https://grafana.com/grafana/plugins/alexanderzobnin-zabbix-datasource/)
-- [Template Reference](https://www.zabbix.com/documentation/current/manual/config/templates)
-- [Zabbix API Documentation](https://www.zabbix.com/documentation/current/manual/api) 
+## 📝 Notes
+> 💡 Active checks are preferred for better security.
+> 
+> 🔒 Always use encryption in production.
+> 
+> 🔄 Regular template updates recommended.
 
+## 🛠️ Maintenance
+
+### 🧹 Log Cleanup
+```bash
+# Rotate agent logs
+logrotate -f /etc/logrotate.d/zabbix-agent
+
+# Clean old data
+find /var/log/zabbix -name "*.old" -delete
+```
+
+### 🔄 Updates
+```bash
+# Update agent
+docker compose -f docker-compose.zabbix_agent.yml pull
+docker compose -f docker-compose.zabbix_agent.yml up -d
+
+# Verify after update
+docker ps | grep zabbix-agent
+```
+
+## 🔗 Related Documentation
+- 📚 [Zabbix Agent Documentation](https://www.zabbix.com/documentation/current/manual/concepts/agent)
+- 📊 [Template Reference](https://www.zabbix.com/documentation/current/manual/config/templates)
+- 🔧 [Custom Parameters](https://www.zabbix.com/documentation/current/manual/config/items/userparameters)
