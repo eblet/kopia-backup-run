@@ -139,11 +139,33 @@ DOCKER_VOLUMES='{
 #### Run Client Backup
 ```bash
 # Manual backup
-./scripts/setup_client.sh
+cd /path/to/kopia-backup-run
+# Using script (recommended)
+sudo ./scripts/setup_client.sh
+# OR using docker-compose directly
+docker-compose -f docker/docker-compose.client.yml up -d
 
 # Setup scheduled backup (optional)
-crontab -e
-# Add: 0 2 * * * /path/to/kopia-backup-run/scripts/setup_client.sh
+sudo crontab -e
+
+# Add schedule (example: daily at 2 AM)
+# Using script (recommended):
+0 2 * * * cd /path/to/kopia-backup-run && ./scripts/setup_client.sh
+
+# OR using docker-compose:
+0 2 * * * cd /path/to/kopia-backup-run && docker-compose -f docker/docker-compose.client.yml up -d
+```
+
+#### Verify Backup
+```bash
+# Check backup status and logs
+docker logs kopia-client
+
+# List snapshots
+docker exec kopia-client kopia snapshot list
+
+# Verify specific snapshot
+docker exec kopia-client kopia snapshot verify latest
 ```
 
 ### 3. Monitoring Setup (Optional)
@@ -157,7 +179,9 @@ If you want to add monitoring later:
 nano .env
 
 # Deploy monitoring stack
-./scripts/setup_monitoring.sh
+sudo ./scripts/setup_monitoring.sh
+or
+docker-compose -f monitoring/docker-compose.monitoring.yml up -d
 
 # Access dashboards
 - Grafana: http://localhost:3000
