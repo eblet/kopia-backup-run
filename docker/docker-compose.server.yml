@@ -16,7 +16,7 @@ services:
       - PGID=${PGID:-1000}
       - TZ=${TZ:-UTC}
       - KOPIA_HTTPS=${KOPIA_TLS_ENABLED:-false}
-      - KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD:-change-me-please}
+      - KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD:-password}
     volumes:
       - ${KOPIA_BASE_DIR:-/var/lib/kopia}:/app/config
       - ${KOPIA_CACHE_DIR:-/var/cache/kopia}:/app/cache
@@ -34,7 +34,8 @@ services:
       "--server-username=${KOPIA_SERVER_USERNAME:-admin}",
       "--server-password=${KOPIA_SERVER_PASSWORD:-admin}",
       "--insecure",
-      "--without-password"
+      "--without-password",
+      "--insecure-allow-http"
     ]
     healthcheck:
       test: ["CMD", "pgrep", "kopia"]

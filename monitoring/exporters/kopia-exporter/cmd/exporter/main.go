@@ -6,6 +6,7 @@ import (
     "net/http"
     "os"
     "os/exec"
+    "path/filepath"
     "time"
 
     "github.com/prometheus/client_golang/prometheus"
@@ -61,14 +62,14 @@ type SnapshotInfo struct {
 }
 
 func setupKopiaConfig() error {
-    configPath := os.Getenv("KOPIA_CONFIG_PATH")
-    if configPath == "" {
-        configPath = "/app/config"
+    configDir := os.Getenv("KOPIA_CONFIG_PATH")
+    if configDir == "" {
+        configDir = "/app/config"
     }
 
-    // Создаем директории если их нет
+    // Create base directories
     dirs := []string{
-        configPath,
+        configDir,
         os.Getenv("KOPIA_CACHE_DIRECTORY"),
         "/app/logs",
     }
@@ -81,6 +82,9 @@ func setupKopiaConfig() error {
         }
     }
 
+    // Set env variables
+    os.Setenv("KOPIA_CONFIG_PATH", filepath.Join(configDir, "repository.config"))
+
     return nil
 }
 
@@ -89,7 +93,7 @@ func main() {
         log.Fatalf("Error setting up config: %v", err)
     }
 
-    // Получаем параметры подключения из переменных окружения
+    // Get connection parameters from env variables
     serverURL := os.Getenv("KOPIA_SERVER_URL")
     if serverURL == "" {
         serverURL = "http://kopia-server:51515"
@@ -100,12 +104,14 @@ func main() {
         log.Fatal("KOPIA_PASSWORD environment variable is required")
     }
 
-    // Пробуем подключиться к серверу
+    // Check connection to server
     connectCmd := exec.Command("kopia", "repository", "connect", "server",
         "--url", serverURL,
         "--password", password,
         "--no-check-for-updates",
-        "--no-progress")
+        "--config-file", filepath.Join(os.Getenv("KOPIA_CONFIG_PATH"), "repository.config"),
+        "--cache-directory", os.Getenv("KOPIA_CACHE_DIRECTORY"),
+        "--persist-credentials")
 
     if output, err := connectCmd.CombinedOutput(); err != nil {
         log.Printf("Error connecting to Kopia server: %v\nOutput: %s", err, output)
@@ -137,7 +143,7 @@ func collectMetrics() {
             }
 
             repoStatus.Set(1)
-            // Обработка каждого снапшота
+            // Process each snapshot
             for _, snapshot := range snapshots {
                 source := snapshot.Source
                 backupStatus.WithLabelValues(source).Set(1)

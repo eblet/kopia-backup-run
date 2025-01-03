@@ -35,22 +35,34 @@ services:
     logging: *default-logging
 
   kopia-exporter:
-    build: 
-      context: ${PWD}/monitoring/exporters/kopia-exporter
+    build:
+      context: ./exporters/kopia-exporter
       dockerfile: Dockerfile
     container_name: kopia-exporter
+    environment:
+      - KOPIA_SERVER_URL=${KOPIA_SERVER_URL:-http://kopia-server}:${KOPIA_SERVER_PORT:-51515}
+      - KOPIA_PASSWORD=${KOPIA_REPO_PASSWORD:-password}
+      - KOPIA_CONFIG_PATH=/app/config
+      - KOPIA_CACHE_DIRECTORY=/app/cache
+      - KOPIA_LOG_DIR=/app/logs
+      - KOPIA_CHECK_FOR_UPDATES=false
+      - KOPIA_PERSIST_CREDENTIALS_ON_CONNECT=true
+      - TZ=UTC
     volumes:
-      - ${KOPIA_BASE_DIR:-/var/lib/kopia}:/app/data:ro
+      - kopia_exporter_config:/app/config
+      - kopia_exporter_cache:/app/cache
+      - kopia_exporter_logs:/app/logs
     ports:
-      - "${KOPIA_EXPORTER_PORT:-9091}:9091"
+      - "9091:9091"
     networks:
-      - monitoring_network
       - kopia_network
-    labels:
-      - "prometheus.io/scrape=${PROMETHEUS_SCRAPE:-true}"
-      - "prometheus.io/port=${KOPIA_EXPORTER_PORT:-9091}"
-      - "prometheus.io/path=/metrics"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9091/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     profiles:
       - base-metrics
       - grafana-local
@@ -130,10 +142,17 @@ services:
       - full-stack
     logging: *default-logging
 
+volumes:
+  kopia_config:
+    external: true
+  kopia_exporter_config:
+  kopia_exporter_cache:
+  kopia_exporter_logs:
+
 networks:
   monitoring_network:
     name: ${MONITORING_NETWORK_NAME:-monitoring_network}
     driver: bridge
   kopia_network:
-    external: true
     name: ${KOPIA_NETWORK_NAME:-kopia_network}
+    external: true

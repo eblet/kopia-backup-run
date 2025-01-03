@@ -193,6 +193,17 @@ PROMETHEUS_SCRAPE=true
 # Follow interactive prompts to connect to the server and configure backups
 ```
 
+## Important Security Notice
+The Kopia server requires HTTPS/TLS for secure communication. HTTP connections are not supported by default for security reasons. See [SSL Setup Guide](docs/ssl_setup.md) for configuration options.
+
+Manual for configure SSL (see [SSL Setup Guide](docs/ssl_setup.md))
+
+## Security Considerations
+- Always use HTTPS for Kopia server connections
+- Keep SSL certificates up to date
+- Use strong passwords for server and repository access
+- Regularly update all components
+
 ## 📁 Directory Structure
 ```
 kopia-backup-stack/
