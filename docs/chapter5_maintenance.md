@@ -9,278 +9,167 @@ Maintenance procedures ensure:
 - 💾 Data integrity
 - 🚨 Problem prevention
 
-## ⏰ Routine Tasks
+## ⏰️ Maintenance Script
 
-### 📅 Daily Checks
+The `maintenance.sh` script provides essential maintenance functionality:
 
-1. **💾 Backup Status**
+### 📊 System Verification
 ```bash
-# 📊 Check recent backups
-docker exec kopia-server kopia snapshot list --last 24h
+# Check system health
+./scripts/maintenance.sh verify
 
-# ✅ Verify backup completion
-docker exec kopia-server kopia snapshot verify \
-    --verify-files-percent=5 \
-    --parallel=4
-
-# 📋 Check repository status
-docker exec kopia-server kopia repository status
+# Output example:
+[2024-03-20 10:15:23] Verifying system health...
+[2024-03-20 10:15:24] Prometheus: OK
+[2024-03-20 10:15:24] Grafana: OK
+[2024-03-20 10:15:25] Kopia repository: OK
 ```
 
-2. **📊 Monitoring Health**
+### 💾 Backup Operations
 ```bash
-# 🔍 Check monitoring stack
-docker compose ps
+# Backup dashboards and configurations
+./scripts/maintenance.sh backup
 
-# 📈 Verify metrics collection
-curl -s http://localhost:9091/metrics | grep kopia
-curl -s http://localhost:9090/-/healthy
-
-# 🚨 Check alerts
-curl -s http://localhost:9090/api/v1/alerts
+# Output example:
+[2024-03-20 10:20:15] Starting backup...
+[2024-03-20 10:20:16] Backing up Grafana dashboards...
+[2024-03-20 10:20:18] Backing up configurations...
+[2024-03-20 10:20:20] Backup completed: /var/lib/kopia/maintenance/20240320_102015
 ```
 
-3. **💻 System Resources**
+### 🔄 System Updates
 ```bash
-# 💿 Check disk space
-df -h /var/lib/kopia /repository
+# Update system components
+./scripts/maintenance.sh update
 
-# 📊 Monitor resource usage
-docker stats kopia-server prometheus grafana
-
-# 📝 Check logs
-docker compose logs --tail=100
+# Output example:
+[2024-03-20 10:25:30] Starting system update...
+[2024-03-20 10:25:35] Update completed
 ```
 
-### 📅 Weekly Tasks
-
-1. **🗄️ Repository Maintenance**
+### 📝 Log Management
 ```bash
-# 🔄 Run maintenance
-docker exec kopia-server kopia maintenance run
+# Rotate and cleanup logs
+./scripts/maintenance.sh logs
 
-# ✅ Verify indexes
-docker exec kopia-server kopia index verify
-
-# 🔍 Check content integrity
-docker exec kopia-server kopia content verify \
-    --parallel=4 \
-    --verify-files-percent=10
+# Output example:
+[2024-03-20 10:30:45] Starting log rotation...
+[2024-03-20 10:30:47] Log rotation completed
 ```
 
-2. **📊 Performance Analysis**
+## 📅 Maintenance Schedule
+
+### Daily Tasks
+- ✅ Run system verification
 ```bash
-# ⏱️ Analyze backup times
-docker exec kopia-server kopia snapshot stats
-
-# 📈 Check compression ratios
-docker exec kopia-server kopia content stats
-
-# 📊 Monitor resource trends
-./scripts/analyze_performance.sh
+./scripts/maintenance.sh verify
 ```
 
-3. **🔐 Security Checks**
+### Weekly Tasks
+- 💾 Backup configurations and dashboards
+- 🔄 Update system components if needed
 ```bash
-# 📝 Review access logs
-grep -i error /var/log/kopia/*.log
-
-# 🔍 Check authentication attempts
-docker exec kopia-server kopia audit-log list --last 7d
-
-# 🔒 Verify SSL certificates
-./scripts/check_certificates.sh
+./scripts/maintenance.sh backup
+./scripts/maintenance.sh update
 ```
 
-### 📅 Monthly Tasks
-
-1. **🔍 Full System Audit**
+### Monthly Tasks
+- 📝 Rotate logs
+- 🧹 Clean old backups (automatic during backup)
 ```bash
-# ✅ Complete repository check
-docker exec kopia-server kopia repository validate-full
-
-# 💾 Verify all snapshots
-docker exec kopia-server kopia snapshot verify \
-    --verify-files-percent=100 \
-    --parallel=4
-
-# 🔄 Test recovery procedures
-./scripts/test_recovery.sh
-```
-
-2. **💾 Configuration Backup**
-```bash
-# 📁 Backup configurations
-./scripts/backup_configs.sh
-
-# 📊 Export Grafana dashboards
-./scripts/backup_dashboards.sh
-
-# 📝 Archive logs
-./scripts/archive_logs.sh
-```
-
-3. **🔄 System Updates**
-```bash
-# 📦 Update containers
-docker compose pull
-docker compose up -d
-
-# 💻 Update system packages
-apt-get update && apt-get upgrade -y
-
-# 🔄 Rebuild custom images
-docker compose build --no-cache
+./scripts/maintenance.sh logs
 ```
 
 ## 📋 Backup Management
 
 ### ⚙️ Policy Maintenance
 ```bash
-# 📝 Review global policy
+# Review global policy
 docker exec kopia-server kopia policy show --global
 
-# ⏰ Update retention
+# Update retention
 docker exec kopia-server kopia policy set --global \
     --keep-latest=30 \
     --keep-hourly=24 \
     --keep-daily=7 \
     --keep-weekly=4 \
     --keep-monthly=6
-
-# ✅ Check policy compliance
-docker exec kopia-server kopia policy verify
 ```
 
-### 💾 Storage Optimization
+### 💾 Storage Management
 ```bash
-# 📊 Analyze space usage
+# Check repository status
+docker exec kopia-server kopia repository status
+
+# Analyze space usage
 docker exec kopia-server kopia content stats
 
-# 🗑️ Remove old snapshots
-docker exec kopia-server kopia snapshot delete \
-    --older-than=180d \
-    --delete-unmatched
-
-# 🔄 Compact repository
-docker exec kopia-server kopia maintenance run --full
-```
-
-## 🔄 System Updates
-
-### 📦 Component Updates
-```bash
-# 🔄 Update procedure
-./scripts/update_system.sh
-
-# ℹ️ Version check
-docker exec kopia-server kopia --version
-docker compose version
-
-# ✅ Verify compatibility
-./scripts/verify_versions.sh
-```
-
-### ⚙️ Configuration Updates
-```bash
-# 📝 Apply new configs
-./scripts/update_configs.sh
-
-# 🔄 Reload services
-docker compose restart
-
-# ✅ Verify changes
-./scripts/verify_config.sh
-```
-
-## 📈 Performance Optimization
-
-### 💻 Resource Tuning
-```yaml
-# docker-compose.yml
-services:
-  kopia-server:
-    environment:
-      - KOPIA_CACHE_SIZE=5G
-      - KOPIA_PARALLEL_UPLOADS=4
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-```
-
-### 📊 Monitoring Optimization
-```yaml
-# prometheus.yml
-global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
-
-storage:
-  tsdb:
-    retention.time: 15d
-    retention.size: 10GB
-    wal:
-      retention.period: "12h"
+# Run maintenance
+docker exec kopia-server kopia maintenance run
 ```
 
 ## 🔍 Troubleshooting
 
-### 🚨 Common Issues
+### Common Issues
 
-1. **❌ Backup Failures**
+1. **❌ Service Failures**
 ```bash
-# 📝 Check logs
-docker logs kopia-server
+# Check system health
+./scripts/maintenance.sh verify
 
-# ✅ Verify connectivity
-docker exec kopia-server kopia repository status
-
-# 🧪 Test backup
-docker exec kopia-server kopia snapshot create --path=/test
+# Review logs
+docker compose logs --tail=100
 ```
 
 2. **📉 Performance Issues**
 ```bash
-# 📊 Check resource usage
+# Check resource usage
 docker stats
 
-# 📈 Analyze metrics
+# Review Prometheus metrics
 curl -s http://localhost:9090/api/v1/query?query=rate(kopia_backup_duration_seconds[5m])
-
-# 📝 Review logs
-grep -i slow /var/log/kopia/*.log
 ```
 
-## 🔄 Disaster Recovery
+### 🚨 Recovery Procedures
 
-### 💾 Backup Recovery
+1. **💾 Backup Recovery**
 ```bash
-# 🔧 Repository recovery
-docker exec kopia-server kopia repository repair
+# Restore configurations
+cd /var/lib/kopia/maintenance/[TIMESTAMP]
+tar xzf configs.tar.gz
 
-# 📦 Snapshot restore
-docker exec kopia-server kopia snapshot restore \
-    --snapshot-id=latest \
-    --target=/recovery
-
-# ✅ Verify restoration
-docker exec kopia-server kopia snapshot verify \
-    --snapshot-id=latest
-```
-
-### 🔄 System Recovery
-```bash
-# 📝 Configuration restore
-./scripts/restore_configs.sh
-
-# 🔄 Service recovery
+# Apply restored configs
 docker compose down
 docker compose up -d
-
-# ✅ Verify system
-./scripts/verify_system.sh
 ```
+
+2. **🔄 Service Recovery**
+```bash
+# Restart services
+docker compose restart
+
+# Verify after restart
+./scripts/maintenance.sh verify
+```
+
+## 📚 Best Practices
+
+### 🔐 Security
+- Regularly verify system health
+- Keep configurations backed up
+- Monitor system logs
+- Update components regularly
+
+### 📊 Performance
+- Monitor resource usage
+- Review backup durations
+- Analyze storage usage
+- Optimize retention policies
+
+### 💾 Data Management
+- Regular backups of configurations
+- Periodic log rotation
+- Clean old backups
+- Verify backup integrity
 
 [Back to README →](../README.md)
