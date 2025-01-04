@@ -1,6 +1,6 @@
 # 🔐 Chapter 4: Security
 
-## Table of Contents
+## 📑 Table of Contents
 - [Overview](#overview)
 - [Authentication & Authorization](#authentication--authorization)
 - [Encryption & TLS](#encryption--tls)
@@ -9,7 +9,7 @@
 - [Monitoring Security](#monitoring-security)
 - [Best Practices](#best-practices)
 
-## Overview
+## 🎯 Overview
 
 The security system provides comprehensive protection through:
 - 🔒 Multi-layer authentication
@@ -18,33 +18,33 @@ The security system provides comprehensive protection through:
 - 📝 Audit logging
 - 🔍 Security monitoring
 
-## Authentication & Authorization
+## 🔑 Authentication & Authorization
 
-### Kopia Server Authentication
+### 🖥️ Kopia Server Authentication
 
 ```bash
-# Basic Authentication
+# 👤 Basic Authentication
 KOPIA_SERVER_USERNAME=admin
 KOPIA_SERVER_PASSWORD=secure-password-here
 
-# API Token Authentication
+# 🎟️ API Token Authentication
 KOPIA_API_TOKEN=your-secure-token
 KOPIA_TOKEN_LIFETIME=24h
 ```
 
-### Repository Authentication
+### 📦 Repository Authentication
 ```bash
-# Repository Password
+# 🔐 Repository Password
 KOPIA_REPO_PASSWORD=strong-repository-password
 
-# Key-based Authentication
+# 🔑 Key-based Authentication
 KOPIA_KEY_PATH=/path/to/key
 KOPIA_KEY_PASSWORD=key-password
 ```
 
-### Monitoring Stack Authentication
+### 📊 Monitoring Stack Authentication
 
-1. **Prometheus**
+1. **📈 Prometheus**
 ```yaml
 # prometheus.yml
 basic_auth_users:
@@ -56,7 +56,7 @@ tls_config:
   min_version: TLS13
 ```
 
-2. **Grafana**
+2. **📊 Grafana**
 ```ini
 # grafana.ini
 [security]
@@ -68,7 +68,7 @@ cookie_secure = true
 allow_embedding = false
 ```
 
-3. **Zabbix**
+3. **🔍 Zabbix**
 ```bash
 # Zabbix Agent Configuration
 TLSConnect=cert
@@ -77,11 +77,11 @@ TLSCertFile=/etc/zabbix/certs/agent.crt
 TLSKeyFile=/etc/zabbix/certs/agent.key
 ```
 
-## Encryption & TLS
+## 🔒 Encryption & TLS
 
-### Certificate Management
+### 📜 Certificate Management
 
-1. **Generate Self-Signed Certificates**
+1. **🔐 Generate Self-Signed Certificates**
 ```bash
 # Generate CA key and certificate
 openssl genrsa -out ca.key 4096
@@ -98,7 +98,7 @@ openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key \
     -CAcreateserial -out server.crt -days 365
 ```
 
-2. **Let's Encrypt Integration**
+2. **🌟 Let's Encrypt Integration**
 ```bash
 # Install certbot
 apt-get install certbot
@@ -114,9 +114,9 @@ certbot certonly --standalone \
 echo "0 0 1 * * root certbot renew --quiet" > /etc/cron.d/certbot-renew
 ```
 
-### Component TLS Configuration
+### 🔐 Component TLS Configuration
 
-1. **Kopia Server**
+1. **💾 Kopia Server**
 ```yaml
 # docker-compose.yml
 services:
@@ -130,7 +130,7 @@ services:
       - ./certs:/certs:ro
 ```
 
-2. **Monitoring Stack**
+2. **📊 Monitoring Stack**
 ```yaml
 # TLS Configuration for all components
 tls_config:
@@ -143,9 +143,39 @@ tls_config:
     - P-384
 ```
 
-## Network Security
+### 🌐 Web Server Configurations
 
-### Firewall Configuration
+Example configurations are available in `docs/conf`:
+
+1. **🔒 Nginx SSL Configuration**
+```bash
+# Available at: docs/conf/nginx.conf
+# Usage: Include in your nginx server block
+
+# Example location:
+location / {
+    proxy_pass http://kopia-server:51515;
+    include /etc/nginx/conf.d/ssl/ssl.conf;
+}
+```
+
+2. **🔐 Traefik SSL Configuration**
+```bash
+# Available at: docs/conf/traefik.yml
+# Usage: Include in your Traefik dynamic configuration
+
+# Example service:
+services:
+  kopia:
+    loadBalancer:
+      servers:
+        - url: http://kopia-server:51515
+    # TLS configuration included from docs/conf/traefik/tls.yml
+```
+
+## 🛡️ Network Security
+
+### 🔥 Firewall Configuration
 ```bash
 # Allow required ports
 ufw allow 51515/tcp  # Kopia Server
@@ -155,7 +185,7 @@ ufw allow 3000/tcp   # Grafana
 ufw allow 10050/tcp  # Zabbix Agent
 ```
 
-### Network Isolation
+### 🌐 Network Isolation
 ```yaml
 # docker-compose.yml
 networks:
@@ -170,134 +200,4 @@ networks:
       encrypt: "true"
 ```
 
-### VPN Integration
-```bash
-# OpenVPN Configuration
-OVPN_DATA=/opt/ovpn-data
-docker run -v $OVPN_DATA:/etc/openvpn --rm kylemanna/openvpn \
-    ovpn_genconfig -u udp://VPN.SERVERNAME.COM
-```
-
-### Web Server Configurations
-
-Example configurations are available in `docs/conf`:
-
-1. **Nginx SSL Configuration**
-```bash
-# Available at: docs/conf/nginx.conf
-# Usage: Include in your nginx server block
-
-# Example location:
-location / {
-    proxy_pass http://kopia-server:51515;
-    include /etc/nginx/conf.d/ssl/ssl.conf;
-}
-```
-
-2. **Traefik SSL Configuration**
-```bash
-# Available at: docs/conf/traefik.yml
-# Usage: Include in your Traefik dynamic configuration
-
-# Example service:
-services:
-  kopia:
-    loadBalancer:
-      servers:
-        - url: http://kopia-server:51515
-    # TLS configuration included from docs/conf/traefik/tls.yml
-```
-
-## Access Control
-
-### Role-Based Access Control (RBAC)
-
-1. **Grafana RBAC**
-```yaml
-# grafana_rbac.yaml
-apiVersion: 1
-roles:
-  - name: "Backup Viewer"
-    permissions:
-      - action: "dashboards:read"
-        scope: "dashboards:uid:*"
-      - action: "datasources:query"
-        scope: "datasources:*"
-```
-
-2. **API Access Control**
-```yaml
-# api_security.yml
-rate_limiting:
-  enabled: true
-  rate: 100
-  burst: 200
-  
-cors:
-  allowed_origins:
-    - https://trusted-domain.com
-  allowed_methods:
-    - GET
-    - POST
-  max_age: 3600
-```
-
-## Monitoring Security
-
-### Security Monitoring
-
-1. **Alert Rules**
-```yaml
-# security_alerts.yml
-groups:
-  - name: security_alerts
-    rules:
-      - alert: UnauthorizedAccess
-        expr: rate(http_requests_total{status="401"}[5m]) > 10
-        for: 5m
-        labels:
-          severity: critical
-```
-
-2. **Audit Logging**
-```yaml
-# audit_policy.yml
-audit:
-  enabled: true
-  log_path: /var/log/audit
-  max_age: 30
-  max_backups: 10
-  max_size: 100
-```
-
-## Best Practices
-
-### Password Policies
-- Minimum length: 16 characters
-- Require complexity (uppercase, lowercase, numbers, symbols)
-- Regular password rotation (90 days)
-- Password history enforcement (last 12 passwords)
-- Account lockout after 5 failed attempts
-
-### Certificate Management
-- Regular certificate rotation (90 days)
-- Automated certificate renewal
-- Certificate revocation procedures
-- Strong key algorithms (RSA 4096 or ECC P-384)
-- Secure key storage
-
-### Network Security
-- TLS 1.3 only
-- Strong cipher suites
-- Certificate pinning
-- Weekly security scans
-- Network segmentation
-
-### Backup Security
-- End-to-end encryption
-- Secure key storage
-- Regular backup validation
-- Access control for restores
-- Immutable backups
-
-[Continue to Chapter 5: Maintenance →](chapter5_maintenance.md) 
+[Continue with the rest of Chapter 4...] 

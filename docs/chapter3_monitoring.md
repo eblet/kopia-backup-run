@@ -1,6 +1,6 @@
 # 📊 Chapter 3: Monitoring
 
-## Table of Contents
+## 📑 Table of Contents
 - [Overview](#overview)
 - [Monitoring Profiles](#monitoring-profiles)
 - [Components](#components)
@@ -10,7 +10,7 @@
 - [Maintenance](#maintenance)
 - [Troubleshooting](#troubleshooting)
 
-## Overview
+## 🎯 Overview
 
 The monitoring system provides comprehensive visibility into:
 - 🔄 Backup operations status
@@ -19,9 +19,9 @@ The monitoring system provides comprehensive visibility into:
 - 🚨 Real-time alerts
 - 🖥️ System resources
 
-## Monitoring Profiles
+## 📊 Monitoring Profiles
 
-### Profile Comparison
+### 🔍 Profile Comparison
 
 | Feature | none | base-metrics | grafana-local | grafana-external | zabbix-external | prometheus-external | grafana-zabbix-external | all-external | full-stack |
 |---------|------|--------------|---------------|------------------|-----------------|-------------------|----------------------|--------------|------------|
@@ -35,19 +35,19 @@ The monitoring system provides comprehensive visibility into:
 | External Zabbix | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ | ❌ |
 | External Prometheus | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ | ❌ |
 
-### Profile Configuration
+### ⚙️ Profile Configuration
 
-1. **No Monitoring** (`none`)
+1. **🚫 No Monitoring** (`none`)
 ```bash
 MONITORING_PROFILE=none
 
 # Effect:
-# - All monitoring components disabled
-# - No metrics collection
-# - Minimal resource usage
+# - 🔕 All monitoring components disabled
+# - 📊 No metrics collection
+# - 💻 Minimal resource usage
 ```
 
-2. **Base Metrics** (`base-metrics`)
+2. **📊 Base Metrics** (`base-metrics`)
 ```bash
 MONITORING_PROFILE=base-metrics
 
@@ -225,11 +225,11 @@ Choose your profile based on:
    - Storage capacity
    - Network bandwidth
 
-## Components
+## 🔌 Components
 
-### Core Components
+### 🛠️ Core Components
 
-1. **Kopia Exporter**
+1. **📊 Kopia Exporter**
 ```yaml
 # docker-compose.yml
 kopia-exporter:
@@ -273,19 +273,19 @@ grafana:
     - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
 ```
 
-## Metrics & Alerts
+## 📈 Metrics & Alerts
 
-### Key Metrics
+### 📊 Key Metrics
 
-1. **Backup Metrics**
+1. **💾 Backup Metrics**
 ```promql
-# Backup Status
+# 🔄 Backup Status
 kopia_backup_status{source="path"}
 
-# Backup Size
+# 📦 Backup Size
 rate(kopia_backup_size_bytes[5m])
 
-# Backup Duration
+# ⏱️ Backup Duration
 kopia_backup_duration_seconds
 ```
 
@@ -323,9 +323,9 @@ kopia_repository_free_space_bytes
     severity: warning
 ```
 
-## Dashboards
+## 📊 Dashboards
 
-### Overview Dashboard
+### 🖥️ Overview Dashboard
 ```json
 {
   "dashboard": {
@@ -365,7 +365,7 @@ kopia_repository_free_space_bytes
 }
 ```
 
-## Configuration
+## 📊 Configuration
 
 ### Prometheus Configuration
 ```yaml
@@ -391,7 +391,7 @@ admin_password = ${GRAFANA_ADMIN_PASSWORD}
 default_home_dashboard_path = /etc/grafana/dashboards/kopia_overview.json
 ```
 
-## Maintenance
+## 📊 Maintenance
 
 ### Daily Tasks
 ```bash
@@ -411,7 +411,7 @@ curl -s http://localhost:9090/api/v1/alerts
 docker exec prometheus prometheus tsdb analyze
 ```
 
-## Troubleshooting
+## 📊 Troubleshooting
 
 ### Common Issues
 
