@@ -152,24 +152,4 @@ docker compose restart
 ./scripts/maintenance.sh verify
 ```
 
-## 📚 Best Practices
-
-### 🔐 Security
-- Regularly verify system health
-- Keep configurations backed up
-- Monitor system logs
-- Update components regularly
-
-### 📊 Performance
-- Monitor resource usage
-- Review backup durations
-- Analyze storage usage
-- Optimize retention policies
-
-### 💾 Data Management
-- Regular backups of configurations
-- Periodic log rotation
-- Clean old backups
-- Verify backup integrity
-
 [Back to README →](../README.md)
