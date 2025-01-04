@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zabbix_export>
+    <version>6.0</version>
+    <templates>
+        <template>
+            <template>Template Docker Containers</template>
+            <name>Template Docker Containers</name>
+            <description>Docker containers monitoring template</description>
+            <groups>
+                <group>
+                    <name>Templates/Containers</name>
+                </group>
+            </groups>
+            <discovery_rules>
+                <discovery_rule>
+                    <name>Docker containers discovery</name>
+                    <key>docker.containers.discovery</key>
+                    <delay>1m</delay>
+                    <item_prototypes>
+                        <item_prototype>
+                            <name>Container {#NAME} status</name>
+                            <key>docker.container.status[{#ID}]</key>
+                            <delay>30s</delay>
+                            <value_type>FLOAT</value_type>
+                            <triggers>
+                                <trigger>
+                                    <name>Container {#NAME} is down</name>
+                                    <expression>last(/Template Docker Containers/docker.container.status[{#ID}])=0</expression>
+                                    <priority>HIGH</priority>
+                                </trigger>
+                            </triggers>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>Container {#NAME} memory usage</name>
+                            <key>docker.container.memory[{#ID}]</key>
+                            <delay>1m</delay>
+                            <value_type>FLOAT</value_type>
+                            <units>B</units>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>Container {#NAME} CPU usage</name>
+                            <key>docker.container.cpu[{#ID}]</key>
+                            <delay>1m</delay>
+                            <value_type>FLOAT</value_type>
+                            <units>%</units>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>Container {#NAME} network input</name>
+                            <key>docker.container.netin[{#ID}]</key>
+                            <delay>1m</delay>
+                            <value_type>FLOAT</value_type>
+                            <units>B</units>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>Container {#NAME} network output</name>
+                            <key>docker.container.netout[{#ID}]</key>
+                            <delay>1m</delay>
+                            <value_type>FLOAT</value_type>
+                            <units>B</units>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>Container {#NAME} disk input</name>
+                            <key>docker.container.blockin[{#ID}]</key>
+                            <delay>1m</delay>
+                            <value_type>FLOAT</value_type>
+                            <units>B</units>
+                        </item_prototype>
+                        <item_prototype>
+                            <name>Container {#NAME} disk output</name>
+                            <key>docker.container.blockout[{#ID}]</key>
+                            <delay>1m</delay>
+                            <value_type>FLOAT</value_type>
+                            <units>B</units>
+                        </item_prototype>
+                    </item_prototypes>
+                </discovery_rule>
+            </discovery_rules>
+        </template>
+    </templates>
+</zabbix_export> 

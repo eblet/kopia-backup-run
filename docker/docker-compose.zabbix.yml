@@ -9,8 +9,9 @@ services:
       - ZBX_HOSTNAME=${KOPIA_CLIENT_HOSTNAME:-$(hostname)}
       - ZBX_TIMEOUT=${ZABBIX_AGENT_TIMEOUT:-30}
     volumes:
-      - ${ZABBIX_EXTERNAL_SCRIPTS}:/usr/lib/zabbix/externalscripts:ro
       - ${ZABBIX_AGENT_CONFIG}:/etc/zabbix/zabbix_agentd.d:ro
+      - ${ZABBIX_EXTERNAL_SCRIPTS}:/usr/lib/zabbix/externalscripts:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
       - "10050:10050"
     networks:
@@ -27,6 +28,7 @@ services:
       com.kopia.type: monitoring
       com.kopia.component: zabbix-agent
       com.kopia.role: client
+    privileged: true
 
 networks:
   kopia_network:
