@@ -1,15 +1,5 @@
 # 📊 Chapter 3: Monitoring
 
-## 📑 Table of Contents
-- [Overview](#overview)
-- [Monitoring Profiles](#monitoring-profiles)
-- [Components](#components)
-- [Metrics & Alerts](#metrics--alerts)
-- [Dashboards](#dashboards)
-- [Configuration](#configuration)
-- [Maintenance](#maintenance)
-- [Troubleshooting](#troubleshooting)
-
 ## 🎯 Overview
 
 The monitoring system provides comprehensive visibility into:

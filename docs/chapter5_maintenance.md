@@ -1,14 +1,5 @@
 # 🔧 Chapter 5: Maintenance
 
-## 📑 Table of Contents
-- [Overview](#overview)
-- [Routine Tasks](#routine-tasks)
-- [Backup Management](#backup-management)
-- [System Updates](#system-updates)
-- [Performance Optimization](#performance-optimization)
-- [Troubleshooting](#troubleshooting)
-- [Disaster Recovery](#disaster-recovery)
-
 ## 🎯 Overview
 
 Maintenance procedures ensure:
@@ -291,12 +282,5 @@ docker compose up -d
 # ✅ Verify system
 ./scripts/verify_system.sh
 ```
-
-### 📚 Documentation
-- 📝 Keep maintenance logs
-- 📋 Update procedures
-- 🚨 Record incidents
-- 💡 Document solutions
-- 📖 Update runbooks
 
 [Back to README →](../README.md)

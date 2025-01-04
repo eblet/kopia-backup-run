@@ -1,13 +1,5 @@
 # 🛠️ Chapter 2: Installation
 
-## 📑 Table of Contents
-- [System Requirements](#system-requirements)
-- [Installation Methods](#installation-methods)
-- [Basic Installation](#basic-installation)
-- [Advanced Installation](#advanced-installation)
-- [Component Setup](#component-setup)
-- [Post-Installation](#post-installation)
-
 ## 💻 System Requirements
 
 ### 🖥️ Hardware Requirements
@@ -92,6 +84,7 @@ sudo usermod -aG docker $USER
 # 📥 Clone repository
 git clone https://github.com/eblet/kopia-backup-stack
 cd kopia-backup-stack
+chmod +x scripts/*
 
 # ⚙️ Configure environment
 cp .env.example .env
@@ -123,19 +116,6 @@ docker compose ps
 curl -s http://localhost:51515/api/v1/repo/status
 ```
 
-## 🔧 Advanced Installation
-
-### 🔄 High-Availability Setup
-```bash
-# Enable HA mode
-HA_MODE=true
-HA_NODES=3
-CLUSTER_NAME=kopia-cluster
-
-# 🚀 Start HA cluster
-./scripts/setup_ha.sh
-```
-
 ### 🌐 External Services Integration
 ```bash
 # 📊 Grafana integration
@@ -161,27 +141,14 @@ KOPIA_TLS_KEY_PATH=/path/to/key.pem
 
 ### 1️⃣ Server Setup
 ```bash
-# 📦 Initialize repository
-docker exec kopia-server kopia repository create filesystem \
-    --path=/repository \
-    --password=${KOPIA_REPO_PASSWORD}
-
-# 🚀 Configure server
-docker exec kopia-server kopia server start \
-    --address=0.0.0.0:51515 \
-    --server-username=${KOPIA_SERVER_USERNAME} \
-    --server-password=${KOPIA_SERVER_PASSWORD}
+# 📦 Install server and initialize repository
+./scripts/setup_server.sh
 ```
 
 ### 2️⃣ Client Setup
 ```bash
 # 🔗 Connect client
 ./scripts/setup_client.sh
-
-# ⚙️ Configure backup paths
-docker exec kopia-client kopia policy set /data \
-    --compression=zstd \
-    --snapshot-time-schedule="0 2 * * *"
 ```
 
 ### 3️⃣ Monitoring Setup
@@ -193,23 +160,6 @@ docker exec kopia-client kopia policy set /data \
 curl -s http://localhost:9090/-/healthy  # Prometheus
 curl -s http://localhost:3000/api/health # Grafana
 ```
-
-## ✅ Post-Installation
-
-### 📋 Verification Checklist
-- ✅ Server is running
-- ✅ Repository is initialized
-- ✅ Client can connect
-- ✅ Monitoring is active
-- ✅ Backups are scheduled
-- ✅ Alerts are configured
-
-### 🔐 Security Checklist
-- 🔒 TLS enabled
-- 🔑 Strong passwords set
-- 🛡️ Firewall configured
-- 🌐 Network isolated
-- 📊 Monitoring secured
 
 ### ⚙️ Initial Configuration
 ```bash

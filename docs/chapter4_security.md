@@ -1,14 +1,5 @@
 # 🔐 Chapter 4: Security
 
-## 📑 Table of Contents
-- [Overview](#overview)
-- [Authentication & Authorization](#authentication--authorization)
-- [Encryption & TLS](#encryption--tls)
-- [Network Security](#network-security)
-- [Access Control](#access-control)
-- [Monitoring Security](#monitoring-security)
-- [Best Practices](#best-practices)
-
 ## 🎯 Overview
 
 The security system provides comprehensive protection through:
@@ -173,18 +164,6 @@ services:
     # TLS configuration included from docs/conf/traefik/tls.yml
 ```
 
-## 🛡️ Network Security
-
-### 🔥 Firewall Configuration
-```bash
-# Allow required ports
-ufw allow 51515/tcp  # Kopia Server
-ufw allow 9090/tcp   # Prometheus (internal only)
-ufw allow 9091/tcp   # Kopia Exporter (internal only)
-ufw allow 3000/tcp   # Grafana
-ufw allow 10050/tcp  # Zabbix Agent
-```
-
 ### 🌐 Network Isolation
 ```yaml
 # docker-compose.yml
@@ -200,4 +179,4 @@ networks:
       encrypt: "true"
 ```
 
-[Continue with the rest of Chapter 4...] 
+[Continue to Chapter 5: Maintenance →](chapter5_maintenance.md) 
